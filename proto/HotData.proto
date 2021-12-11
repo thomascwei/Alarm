@@ -1,0 +1,29 @@
+syntax = "proto3";
+// gRPC requires protocol buffers version 3. To get version 3,
+// this needs to be explicitly the first noncomment line of the file.
+
+option go_package = "/proto";
+
+// A package is a unique name, so that differing protocol buffers don’t set on each other.
+// The names aren’t tied to Go packages, but Go uses them.
+package main;
+
+// When you want to communicate messages over a service like RPC, they’re defined using a service.
+service HotDataReceiver {
+  // An RPC service call named Say that receives HelloRequest and returns HelloResponse
+  rpc Insert (HotDataRequest) returns (HotDataResponse) {}
+}
+// The messages passed by the RPC Hello service. They each have one string property
+message HotDataRequest {
+  string ObjectID = 1;
+  string Value = 2;
+
+}
+
+message HotDataResponse {
+  string ObjectID = 1;
+  string Value = 2;
+  string message = 3;
+}
+
+// protoc -I=. --go_out=plugins=grpc:. ./HotData.proto

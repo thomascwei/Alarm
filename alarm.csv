@@ -1,0 +1,13 @@
+ObjectID,AlarmLogic,TriggerValue,AlarmCategory,AlarmCategoryOrder
+ID001,=,1,High,1
+ID001,=,2,Medium,2
+ID001,=,3,Low,3
+ID002,>,10,Low,3
+ID002,>,30,Medium,2
+ID002,>,50,High,1
+ID003,>,1,Low,3
+ID003,>,41,Medium,2
+ID003,>,71,High,1
+ID004,=,11,Low,3
+ID004,=,21,Low,3
+ID004,=,71,High,1
