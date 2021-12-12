@@ -1,19 +1,40 @@
 package main
 
 import (
-	"context"
 	"encoding/csv"
 	"fmt"
-	"github.com/traefik/yaegi/interp"
-	"github.com/traefik/yaegi/stdlib"
-	"google.golang.org/grpc"
-	"YourProjectName/proto"
+	"io"
 	"log"
-	"net"
+	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/traefik/yaegi/interp"
+	"github.com/traefik/yaegi/stdlib"
 )
+
+var (
+	Trace *log.Logger
+	Info  *log.Logger
+	Error *log.Logger
+)
+
+// 初始化配置
+func init() {
+	// log配置
+	newPath := filepath.Join(".", "log")
+	_ = os.MkdirAll(newPath, os.ModePerm)
+	file, err := os.OpenFile("./log/main.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatal("can not open log file: " + err.Error())
+	}
+	Trace = log.New(os.Stdout, "TRACE: ", log.Ldate|log.Ltime|log.Lshortfile)
+	Info = log.New(io.MultiWriter(file, os.Stdout), "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	Error = log.New(io.MultiWriter(file, os.Stdout), "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+}
 
 // 讀csv並依指定欄位排序(index從0開始), 後續switch段會需要正確排序
 func readCsvFile1(filePath string, SortColNo int) ([][]string, error) {
@@ -38,16 +59,18 @@ func readCsvFile1(filePath string, SortColNo int) ([][]string, error) {
 	return records, err
 }
 
-var channels = make(map[string]chan string)
+func removeDuplicateValues(StrSlice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
 
-type server1 struct{}
-
-func (s *server1) Insert(ctx context.Context, in *proto.HotDataRequest) (*proto.HotDataResponse, error) {
-	channels[in.ObjectID] <- in.Value
-	msg := "Got " + in.ObjectID + ": " + in.Value
-	return &proto.HotDataResponse{Message: msg}, nil
+	for _, entry := range StrSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }
-
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
@@ -57,33 +80,31 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	//log.Print(rules)
+	// Trace.Println(rules)
+	UniqueIds := make([]string, 0)
 	for _, row := range rules {
+		UniqueIds = append(UniqueIds, row[0])
 		if row[1] == "=" {
 			row[1] = "=="
 		}
 	}
-	//log.Print(rules)
+	UniqueIds = removeDuplicateValues(UniqueIds)
+	// Trace.Print(UniqueIds)
 	ID2Rules := make(map[string][]string)
 	for _, row := range rules {
 		ID2Rules[row[0]] = []string{}
 	}
-	//log.Print(ID2Rules)
 	for _, row := range rules {
 		ID2Rules[row[0]] = append(ID2Rules[row[0]], row[1]+row[2]+":"+row[3])
 	}
-	//log.Print(ID2Rules)
+	Trace.Print(ID2Rules)
 	// 開始拼湊語法文字
 	PackageBase := `	
 	package thomas
 	import (
-		"fmt"
 		"strconv"
+		"fmt"
 	)
-	// 送出判斷結果, 這裡只用print, 真實業務場景是往Kafka送
-	func SendResult(ObjectID string, value interface{}, res string) {
-		fmt.Println(ObjectID, "got:", value, "; send result:", res, "to destination")
-	}
 	`
 	for k, v := range ID2Rules {
 		//fmt.Println("Key:", k, "values:", v)
@@ -91,61 +112,67 @@ func main() {
 		for _, ele := range v {
 			s := strings.Split(ele, ":")
 			//log.Print(s)
-			SwitchString = SwitchString + "\ncase value " + s[0] + ": " + `SendResult(ObjectID, value, "` + s[1] + `") `
+			SwitchString = SwitchString + "\ncase value " + s[0] + ": " + `return "` + s[1] + `" `
 		}
-		SwitchString = SwitchString + "}"
+		SwitchString = SwitchString + "\n" + `default:return "pass"}`
 		//fmt.Println(SwitchString)
 
 		FunctionBase := `
-		func FunctionName(inchan chan string) {
-			ObjectID := "FunctionName"
-			for {
-				strx := <-inchan
-				//fmt.Println("in", strx)
-				value, _ := strconv.Atoi(strx)
+		func FunctionName(strx string) string{
+			fmt.Println("FunctionName got", strx)			
+			value, _ := strconv.Atoi(strx)
 		`
 		FunctionBase = strings.Replace(FunctionBase, "FunctionName", k, 2)
-		PackageBase = PackageBase + FunctionBase + SwitchString + "}}"
+		PackageBase = PackageBase + FunctionBase + SwitchString + "}"
 	}
 	// 印出組合好的程序
-	//fmt.Println(PackageBase)
+	// Trace.Println(PackageBase)
 	// 初始化eval功能
 	i := interp.New(interp.Options{})
 	i.Use(stdlib.Symbols)
 	// 套件程式碼, 照抄
 	_, err = i.Eval(PackageBase)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	// 每個點位都有自己的channel, 以map形式組合
-	ObjectIDs := make([]string, 0, len(ID2Rules))
-	for k := range ID2Rules {
-		ObjectIDs = append(ObjectIDs, k)
-	}
-	//log.Println(ObjectIDs)
-	//channels := make(map[string]chan string)
-	// 每個點位的rule生成的function,帶入自己專屬的channel後以goroutine開起來
-	for _, funcc := range ObjectIDs {
-		channels[funcc] = make(chan string, 10)
-		//log.Println(funcc)
-		// 用package.function來建一個function
-		v, err := i.Eval("thomas." + funcc)
+	funcMap := map[string]func(string) string{}
+	for _, objid := range UniqueIds {
+		v, err := i.Eval("thomas." + objid)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
-		// 驗證function參數格式
-		Calc := v.Interface().(func(chan string))
-		// 協程開起來
-		go Calc(channels[funcc])
+		funcMap[objid] = v.Interface().(func(string) string)
 	}
 
-	l, err := net.Listen("tcp", ":55555") // Starts a TCP server listening on port 55555 and handles any errors.
-	// The gRPC server will use it.
-	if err != nil {
-		log.Fatalf("failed to listen for tcp: %s", err)
-	}
-	s := grpc.NewServer() // Creates a gRPC server and handles requests over the TCP connection
-	proto.RegisterHotDataReceiverServer(s, &server1{})
+	//以Gin框架起一個post接收數據
+	r := gin.Default()
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "got data",
+		})
+	})
+	r.POST("/V1/InsertSensorData", func(c *gin.Context) {
 
-	s.Serve(l) // Registers the implementation of the service on the RPC server.
+		ObjectID := c.PostForm("objectID")
+		Value := c.PostForm("value")
+		currentFunc, ok := funcMap[ObjectID]
+		if !ok {
+			c.JSON(http.StatusOK, gin.H{
+				"message": ObjectID + " not found",
+				"Result":  "error",
+			})
+			return
+		}
+		result := currentFunc(Value)
+		//输出json结果给调用方
+		c.JSON(http.StatusOK, gin.H{
+			"message":  "got data",
+			"ObjectID": ObjectID,
+			"Value":    Value,
+			"Result":   result,
+		})
+
+	})
+	r.Run(":8080")
+
 }
