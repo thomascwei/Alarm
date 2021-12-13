@@ -14,6 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/traefik/yaegi/interp"
 	"github.com/traefik/yaegi/stdlib"
+
+	"alarm/internal"
 )
 
 var (
@@ -74,6 +76,7 @@ func removeDuplicateValues(StrSlice []string) []string {
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
+
 	AlarmCsv := "./alarm.csv"
 	rules, err := readCsvFile1(AlarmCsv, 4)
 	if err != nil {
@@ -97,7 +100,6 @@ func main() {
 	for _, row := range rules {
 		ID2Rules[row[0]] = append(ID2Rules[row[0]], row[1]+row[2]+":"+row[3])
 	}
-	Trace.Print(ID2Rules)
 	// 開始拼湊語法文字
 	PackageBase := `	
 	package thomas
@@ -145,6 +147,7 @@ func main() {
 	}
 
 	//以Gin框架起一個post接收數據
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -173,6 +176,7 @@ func main() {
 		})
 
 	})
+	go internal.GrpcServer()
 	r.Run(":8080")
 
 }

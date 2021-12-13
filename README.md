@@ -21,6 +21,7 @@
 2. 判斷是否觸發alarm或解除alarm
 3. 將alarm event存cache
 4. alarmevent存DB
+5. 起gRPC service接收信息, 用於初始化alarm rules(truncate and regen fom csv)
 
 ```sh
 protoc -I=. --go_out=plugins=grpc:pkg proto/*.proto

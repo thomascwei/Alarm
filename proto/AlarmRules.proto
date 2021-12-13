@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+option go_package = "/proto";
+
+package main;
+
+service AlarmRulesManager {
+  rpc InitAlarmRules (Empty) returns (SQLresponse) {}
+}
+
+message Empty {}
+message SQLresponse{
+    string info = 1;
+}
+
+// protoc -I=. --go_out=plugins=grpc:pkg proto/*.proto
