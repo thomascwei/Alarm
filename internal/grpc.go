@@ -2,9 +2,13 @@ package internal
 
 import (
 	"context"
+	"errors"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
 	// "google.golang.org/protobuf/types/known/timestamppb"
 	"alarm/pkg/proto"
 	"log"
@@ -25,11 +29,34 @@ func contextError(ctx context.Context) error {
 	}
 }
 
+// gPRC的middleware
+func unaryInterceptor(
+	ctx context.Context,
+	req interface{},
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (interface{}, error) {
+	Trace.Println("--> unary interceptor: ", info.FullMethod)
+	md, _ := metadata.FromIncomingContext(ctx)
+	authStringSlice := md.Get("Authorization")
+	// FIXME若有需要驗證token, error response格式須修正
+	if false {
+		if len(authStringSlice) == 0 {
+			return nil, errors.New("auth fail")
+		}
+		if md.Get("Authorization")[0] != "thomas" {
+			return nil, errors.New("auth fail")
+		}
+	}
+
+	return handler(ctx, req)
+}
+
 type Server struct{}
 
 func (s *Server) InitAlarmRules(ctx context.Context, in *proto.Empty) (*proto.SQLresponse, error) {
-	err := queries.TruncateRules(ctx)
 	info := "initial success"
+	err := queries.TruncateRules(ctx)
 	if err != nil {
 		info = "sql truncate fail"
 	}
@@ -37,7 +64,16 @@ func (s *Server) InitAlarmRules(ctx context.Context, in *proto.Empty) (*proto.SQ
 	if err != nil {
 		info = "err"
 	}
+	if err := contextError(ctx); err != nil {
+		return nil, err
+	}
 	return &proto.SQLresponse{Info: info}, nil
+}
+
+// TODO接收hotdata
+func (s *Server) Insert(ctx context.Context, input *proto.HotDataRequest) (*proto.HotDataResponse, error) {
+	Trace.Println(input.ObjectID, input.Value)
+	return &proto.HotDataResponse{StatusOK: true, Message: "ok"}, nil
 }
 
 func GrpcServer() {
@@ -47,9 +83,13 @@ func GrpcServer() {
 	if err != nil {
 		log.Fatalf("failed to listen for tcp: %s", err)
 	}
-	grpcServer := grpc.NewServer() // Creates a gRPC server and handles requests over the TCP connection
-	// TODO後續hot data在這邊再註冊一個即可
+	// Creates a gRPC server and handles requests over the TCP connection
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(unaryInterceptor),
+	)
+	// 多個server可再此註冊
 	proto.RegisterAlarmRulesManagerServer(grpcServer, &Server{})
+	proto.RegisterHotDataReceiverServer(grpcServer, &Server{})
 	err = grpcServer.Serve(l)
 	if err != nil {
 		log.Fatalf("failed to create gRPC server")

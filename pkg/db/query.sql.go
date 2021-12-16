@@ -9,24 +9,47 @@ import (
 	"time"
 )
 
-const CreateHistory = `-- name: CreateHistory :execresult
-INSERT INTO history (eventID, Object, AlarmCategory, AckMessage)
+const CreateAlarmEvent = `-- name: CreateAlarmEvent :execresult
+INSERT INTO history_event (Object, AlarmCategoryOrder, HighestAlarmCategory, AckMessage, start_time)
+VALUES (?, ?, ?, ?, ?)
+`
+
+type CreateAlarmEventParams struct {
+	Object               string    `json:"object"`
+	Alarmcategoryorder   int32     `json:"alarmcategoryorder"`
+	Highestalarmcategory string    `json:"highestalarmcategory"`
+	Ackmessage           string    `json:"ackmessage"`
+	StartTime            time.Time `json:"start_time"`
+}
+
+func (q *Queries) CreateAlarmEvent(ctx context.Context, arg CreateAlarmEventParams) (sql.Result, error) {
+	return q.exec(ctx, q.createAlarmEventStmt, CreateAlarmEvent,
+		arg.Object,
+		arg.Alarmcategoryorder,
+		arg.Highestalarmcategory,
+		arg.Ackmessage,
+		arg.StartTime,
+	)
+}
+
+const CreateAlarmEventDetail = `-- name: CreateAlarmEventDetail :execresult
+INSERT INTO history_event_detail (Event_id, Object, AlarmCategory, created_at)
 VALUES (?, ?, ?, ?)
 `
 
-type CreateHistoryParams struct {
-	Eventid       sql.NullString `json:"eventid"`
-	Object        string         `json:"object"`
-	Alarmcategory string         `json:"alarmcategory"`
-	Ackmessage    sql.NullString `json:"ackmessage"`
+type CreateAlarmEventDetailParams struct {
+	EventID       int32     `json:"event_id"`
+	Object        string    `json:"object"`
+	Alarmcategory string    `json:"alarmcategory"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
-func (q *Queries) CreateHistory(ctx context.Context, arg CreateHistoryParams) (sql.Result, error) {
-	return q.exec(ctx, q.createHistoryStmt, CreateHistory,
-		arg.Eventid,
+func (q *Queries) CreateAlarmEventDetail(ctx context.Context, arg CreateAlarmEventDetailParams) (sql.Result, error) {
+	return q.exec(ctx, q.createAlarmEventDetailStmt, CreateAlarmEventDetail,
+		arg.EventID,
 		arg.Object,
 		arg.Alarmcategory,
-		arg.Ackmessage,
+		arg.CreatedAt,
 	)
 }
 
@@ -66,33 +89,34 @@ func (q *Queries) DeleteRule(ctx context.Context, id int32) error {
 	return err
 }
 
-const ListAllHistory = `-- name: ListAllHistory :many
-SELECT id, eventid, object, alarmcategory, ackmessage, created_at
-FROM history
-where created_at>=? and created_at<?
+const ListAllHistoryBaseOnStartTime = `-- name: ListAllHistoryBaseOnStartTime :many
+SELECT id, object, alarmcategoryorder, highestalarmcategory, ackmessage, start_time, end_time
+FROM history_event
+where start_time>=? and start_time<?
 `
 
-type ListAllHistoryParams struct {
-	CreatedAt   time.Time `json:"created_at"`
-	CreatedAt_2 time.Time `json:"created_at_2"`
+type ListAllHistoryBaseOnStartTimeParams struct {
+	StartTime   time.Time `json:"start_time"`
+	StartTime_2 time.Time `json:"start_time_2"`
 }
 
-func (q *Queries) ListAllHistory(ctx context.Context, arg ListAllHistoryParams) ([]History, error) {
-	rows, err := q.query(ctx, q.listAllHistoryStmt, ListAllHistory, arg.CreatedAt, arg.CreatedAt_2)
+func (q *Queries) ListAllHistoryBaseOnStartTime(ctx context.Context, arg ListAllHistoryBaseOnStartTimeParams) ([]HistoryEvent, error) {
+	rows, err := q.query(ctx, q.listAllHistoryBaseOnStartTimeStmt, ListAllHistoryBaseOnStartTime, arg.StartTime, arg.StartTime_2)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []History
+	var items []HistoryEvent
 	for rows.Next() {
-		var i History
+		var i HistoryEvent
 		if err := rows.Scan(
 			&i.ID,
-			&i.Eventid,
 			&i.Object,
-			&i.Alarmcategory,
+			&i.Alarmcategoryorder,
+			&i.Highestalarmcategory,
 			&i.Ackmessage,
-			&i.CreatedAt,
+			&i.StartTime,
+			&i.EndTime,
 		); err != nil {
 			return nil, err
 		}
@@ -144,12 +168,42 @@ func (q *Queries) ListAllRules(ctx context.Context) ([]Rule, error) {
 	return items, nil
 }
 
+const SetAlarmEventEndTime = `-- name: SetAlarmEventEndTime :exec
+UPDATE history_event SET end_time = ?
+where id = ? and end_time is not null
+`
+
+type SetAlarmEventEndTimeParams struct {
+	EndTime sql.NullTime `json:"end_time"`
+	ID      int32        `json:"id"`
+}
+
+func (q *Queries) SetAlarmEventEndTime(ctx context.Context, arg SetAlarmEventEndTimeParams) error {
+	_, err := q.exec(ctx, q.setAlarmEventEndTimeStmt, SetAlarmEventEndTime, arg.EndTime, arg.ID)
+	return err
+}
+
 const TruncateRules = `-- name: TruncateRules :exec
 TRUNCATE rules
 `
 
 func (q *Queries) TruncateRules(ctx context.Context) error {
 	_, err := q.exec(ctx, q.truncateRulesStmt, TruncateRules)
+	return err
+}
+
+const UpdateAlarmAckMessage = `-- name: UpdateAlarmAckMessage :exec
+UPDATE history_event SET AckMessage = ?
+where id = ? and end_time is not null
+`
+
+type UpdateAlarmAckMessageParams struct {
+	Ackmessage string `json:"ackmessage"`
+	ID         int32  `json:"id"`
+}
+
+func (q *Queries) UpdateAlarmAckMessage(ctx context.Context, arg UpdateAlarmAckMessageParams) error {
+	_, err := q.exec(ctx, q.updateAlarmAckMessageStmt, UpdateAlarmAckMessage, arg.Ackmessage, arg.ID)
 	return err
 }
 
@@ -184,5 +238,21 @@ func (q *Queries) UpdateRule(ctx context.Context, arg UpdateRuleParams) error {
 		arg.CreatedAt,
 		arg.ID,
 	)
+	return err
+}
+
+const UpgradeAlarmCategory = `-- name: UpgradeAlarmCategory :exec
+UPDATE history_event SET AlarmCategoryOrder = ?, HighestAlarmCategory = ?
+where id = ? and end_time is not null
+`
+
+type UpgradeAlarmCategoryParams struct {
+	Alarmcategoryorder   int32  `json:"alarmcategoryorder"`
+	Highestalarmcategory string `json:"highestalarmcategory"`
+	ID                   int32  `json:"id"`
+}
+
+func (q *Queries) UpgradeAlarmCategory(ctx context.Context, arg UpgradeAlarmCategoryParams) error {
+	_, err := q.exec(ctx, q.upgradeAlarmCategoryStmt, UpgradeAlarmCategory, arg.Alarmcategoryorder, arg.Highestalarmcategory, arg.ID)
 	return err
 }

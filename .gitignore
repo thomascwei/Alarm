@@ -3,3 +3,6 @@
 .idea/modules.xml
 .idea/vcs.xml
 log/main.log
+.vscode/extensions.json
+.vscode/settings.json
+log/utils.log

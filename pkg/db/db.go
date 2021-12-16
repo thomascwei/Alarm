@@ -22,8 +22,11 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
-	if q.createHistoryStmt, err = db.PrepareContext(ctx, CreateHistory); err != nil {
-		return nil, fmt.Errorf("error preparing query CreateHistory: %w", err)
+	if q.createAlarmEventStmt, err = db.PrepareContext(ctx, CreateAlarmEvent); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateAlarmEvent: %w", err)
+	}
+	if q.createAlarmEventDetailStmt, err = db.PrepareContext(ctx, CreateAlarmEventDetail); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateAlarmEventDetail: %w", err)
 	}
 	if q.createRuleStmt, err = db.PrepareContext(ctx, CreateRule); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateRule: %w", err)
@@ -31,26 +34,40 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteRuleStmt, err = db.PrepareContext(ctx, DeleteRule); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteRule: %w", err)
 	}
-	if q.listAllHistoryStmt, err = db.PrepareContext(ctx, ListAllHistory); err != nil {
-		return nil, fmt.Errorf("error preparing query ListAllHistory: %w", err)
+	if q.listAllHistoryBaseOnStartTimeStmt, err = db.PrepareContext(ctx, ListAllHistoryBaseOnStartTime); err != nil {
+		return nil, fmt.Errorf("error preparing query ListAllHistoryBaseOnStartTime: %w", err)
 	}
 	if q.listAllRulesStmt, err = db.PrepareContext(ctx, ListAllRules); err != nil {
 		return nil, fmt.Errorf("error preparing query ListAllRules: %w", err)
 	}
+	if q.setAlarmEventEndTimeStmt, err = db.PrepareContext(ctx, SetAlarmEventEndTime); err != nil {
+		return nil, fmt.Errorf("error preparing query SetAlarmEventEndTime: %w", err)
+	}
 	if q.truncateRulesStmt, err = db.PrepareContext(ctx, TruncateRules); err != nil {
 		return nil, fmt.Errorf("error preparing query TruncateRules: %w", err)
 	}
+	if q.updateAlarmAckMessageStmt, err = db.PrepareContext(ctx, UpdateAlarmAckMessage); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateAlarmAckMessage: %w", err)
+	}
 	if q.updateRuleStmt, err = db.PrepareContext(ctx, UpdateRule); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateRule: %w", err)
+	}
+	if q.upgradeAlarmCategoryStmt, err = db.PrepareContext(ctx, UpgradeAlarmCategory); err != nil {
+		return nil, fmt.Errorf("error preparing query UpgradeAlarmCategory: %w", err)
 	}
 	return &q, nil
 }
 
 func (q *Queries) Close() error {
 	var err error
-	if q.createHistoryStmt != nil {
-		if cerr := q.createHistoryStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing createHistoryStmt: %w", cerr)
+	if q.createAlarmEventStmt != nil {
+		if cerr := q.createAlarmEventStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createAlarmEventStmt: %w", cerr)
+		}
+	}
+	if q.createAlarmEventDetailStmt != nil {
+		if cerr := q.createAlarmEventDetailStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createAlarmEventDetailStmt: %w", cerr)
 		}
 	}
 	if q.createRuleStmt != nil {
@@ -63,9 +80,9 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deleteRuleStmt: %w", cerr)
 		}
 	}
-	if q.listAllHistoryStmt != nil {
-		if cerr := q.listAllHistoryStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing listAllHistoryStmt: %w", cerr)
+	if q.listAllHistoryBaseOnStartTimeStmt != nil {
+		if cerr := q.listAllHistoryBaseOnStartTimeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listAllHistoryBaseOnStartTimeStmt: %w", cerr)
 		}
 	}
 	if q.listAllRulesStmt != nil {
@@ -73,14 +90,29 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing listAllRulesStmt: %w", cerr)
 		}
 	}
+	if q.setAlarmEventEndTimeStmt != nil {
+		if cerr := q.setAlarmEventEndTimeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setAlarmEventEndTimeStmt: %w", cerr)
+		}
+	}
 	if q.truncateRulesStmt != nil {
 		if cerr := q.truncateRulesStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing truncateRulesStmt: %w", cerr)
 		}
 	}
+	if q.updateAlarmAckMessageStmt != nil {
+		if cerr := q.updateAlarmAckMessageStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateAlarmAckMessageStmt: %w", cerr)
+		}
+	}
 	if q.updateRuleStmt != nil {
 		if cerr := q.updateRuleStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateRuleStmt: %w", cerr)
+		}
+	}
+	if q.upgradeAlarmCategoryStmt != nil {
+		if cerr := q.upgradeAlarmCategoryStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing upgradeAlarmCategoryStmt: %w", cerr)
 		}
 	}
 	return err
@@ -120,27 +152,35 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                 DBTX
-	tx                 *sql.Tx
-	createHistoryStmt  *sql.Stmt
-	createRuleStmt     *sql.Stmt
-	deleteRuleStmt     *sql.Stmt
-	listAllHistoryStmt *sql.Stmt
-	listAllRulesStmt   *sql.Stmt
-	truncateRulesStmt  *sql.Stmt
-	updateRuleStmt     *sql.Stmt
+	db                                DBTX
+	tx                                *sql.Tx
+	createAlarmEventStmt              *sql.Stmt
+	createAlarmEventDetailStmt        *sql.Stmt
+	createRuleStmt                    *sql.Stmt
+	deleteRuleStmt                    *sql.Stmt
+	listAllHistoryBaseOnStartTimeStmt *sql.Stmt
+	listAllRulesStmt                  *sql.Stmt
+	setAlarmEventEndTimeStmt          *sql.Stmt
+	truncateRulesStmt                 *sql.Stmt
+	updateAlarmAckMessageStmt         *sql.Stmt
+	updateRuleStmt                    *sql.Stmt
+	upgradeAlarmCategoryStmt          *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                 tx,
-		tx:                 tx,
-		createHistoryStmt:  q.createHistoryStmt,
-		createRuleStmt:     q.createRuleStmt,
-		deleteRuleStmt:     q.deleteRuleStmt,
-		listAllHistoryStmt: q.listAllHistoryStmt,
-		listAllRulesStmt:   q.listAllRulesStmt,
-		truncateRulesStmt:  q.truncateRulesStmt,
-		updateRuleStmt:     q.updateRuleStmt,
+		db:                                tx,
+		tx:                                tx,
+		createAlarmEventStmt:              q.createAlarmEventStmt,
+		createAlarmEventDetailStmt:        q.createAlarmEventDetailStmt,
+		createRuleStmt:                    q.createRuleStmt,
+		deleteRuleStmt:                    q.deleteRuleStmt,
+		listAllHistoryBaseOnStartTimeStmt: q.listAllHistoryBaseOnStartTimeStmt,
+		listAllRulesStmt:                  q.listAllRulesStmt,
+		setAlarmEventEndTimeStmt:          q.setAlarmEventEndTimeStmt,
+		truncateRulesStmt:                 q.truncateRulesStmt,
+		updateAlarmAckMessageStmt:         q.updateAlarmAckMessageStmt,
+		updateRuleStmt:                    q.updateRuleStmt,
+		upgradeAlarmCategoryStmt:          q.upgradeAlarmCategoryStmt,
 	}
 }

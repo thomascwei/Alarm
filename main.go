@@ -36,6 +36,7 @@ func init() {
 	Trace = log.New(os.Stdout, "TRACE: ", log.Ldate|log.Ltime|log.Lshortfile)
 	Info = log.New(io.MultiWriter(file, os.Stdout), "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	Error = log.New(io.MultiWriter(file, os.Stdout), "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+
 }
 
 // 讀csv並依指定欄位排序(index從0開始), 後續switch段會需要正確排序
@@ -74,8 +75,8 @@ func removeDuplicateValues(StrSlice []string) []string {
 	return list
 }
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	AlarmCsv := "./alarm.csv"
 	rules, err := readCsvFile1(AlarmCsv, 4)
@@ -100,12 +101,12 @@ func main() {
 	for _, row := range rules {
 		ID2Rules[row[0]] = append(ID2Rules[row[0]], row[1]+row[2]+":"+row[3])
 	}
+	//Trace.Println(ID2Rules)
 	// 開始拼湊語法文字
 	PackageBase := `	
 	package thomas
 	import (
 		"strconv"
-		"fmt"
 	)
 	`
 	for k, v := range ID2Rules {
@@ -121,7 +122,6 @@ func main() {
 
 		FunctionBase := `
 		func FunctionName(strx string) string{
-			fmt.Println("FunctionName got", strx)			
 			value, _ := strconv.Atoi(strx)
 		`
 		FunctionBase = strings.Replace(FunctionBase, "FunctionName", k, 2)

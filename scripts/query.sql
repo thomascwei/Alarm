@@ -22,14 +22,30 @@ FROM rules
 WHERE id = ?;
 
 
--- name: CreateHistory :execresult
-INSERT INTO history (eventID, Object, AlarmCategory, AckMessage)
+-- name: CreateAlarmEvent :execresult
+INSERT INTO history_event (Object, AlarmCategoryOrder, HighestAlarmCategory, AckMessage, start_time)
+VALUES (?, ?, ?, ?, ?);
+
+-- name: UpgradeAlarmCategory :exec
+UPDATE history_event SET AlarmCategoryOrder = ?, HighestAlarmCategory = ?
+where id = ? and end_time is not null;
+
+-- name: UpdateAlarmAckMessage :exec
+UPDATE history_event SET AckMessage = ?
+where id = ? and end_time is not null;
+
+-- name: SetAlarmEventEndTime :exec
+UPDATE history_event SET end_time = ?
+where id = ? and end_time is not null;
+
+-- name: CreateAlarmEventDetail :execresult
+INSERT INTO history_event_detail (Event_id, Object, AlarmCategory, created_at)
 VALUES (?, ?, ?, ?);
 
--- name: ListAllHistory :many
+-- name: ListAllHistoryBaseOnStartTime :many
 SELECT *
-FROM history
-where created_at>=? and created_at<?
+FROM history_event
+where start_time>=? and start_time<?
 ;
 
 -- name: TruncateRules :exec

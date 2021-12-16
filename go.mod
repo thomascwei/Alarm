@@ -3,6 +3,7 @@ module alarm
 go 1.16
 
 require (
+	github.com/bluele/gcache v0.0.2
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-playground/validator/v10 v10.6.1 // indirect
 	github.com/go-sql-driver/mysql v1.6.0
@@ -10,6 +11,7 @@ require (
 	github.com/kyleconroy/sqlc v1.11.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de
 	github.com/spf13/viper v1.10.0
 	github.com/stretchr/testify v1.7.0
 	github.com/traefik/yaegi v0.9.19

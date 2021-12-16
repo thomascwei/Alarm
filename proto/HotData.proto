@@ -4,6 +4,8 @@ syntax = "proto3";
 
 option go_package = "/proto";
 
+import "google/protobuf/timestamp.proto";
+
 // A package is a unique name, so that differing protocol buffers don’t set on each other.
 // The names aren’t tied to Go packages, but Go uses them.
 package main;
@@ -17,13 +19,11 @@ service HotDataReceiver {
 message HotDataRequest {
   string ObjectID = 1;
   string Value = 2;
-
+  optional google.protobuf.Timestamp CreateTime = 3;
 }
 
 message HotDataResponse {
-  string ObjectID = 1;
-  string Value = 2;
-  string message = 3;
+  bool StatusOK = 1;
+  string message = 2;
 }
 
-// protoc -I=. --go_out=plugins=grpc:. ./HotData.proto

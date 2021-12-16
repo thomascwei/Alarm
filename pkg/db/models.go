@@ -7,13 +7,22 @@ import (
 	"time"
 )
 
-type History struct {
-	ID            int32          `json:"id"`
-	Eventid       sql.NullString `json:"eventid"`
-	Object        string         `json:"object"`
-	Alarmcategory string         `json:"alarmcategory"`
-	Ackmessage    sql.NullString `json:"ackmessage"`
-	CreatedAt     time.Time      `json:"created_at"`
+type HistoryEvent struct {
+	ID                   int32        `json:"id"`
+	Object               string       `json:"object"`
+	Alarmcategoryorder   int32        `json:"alarmcategoryorder"`
+	Highestalarmcategory string       `json:"highestalarmcategory"`
+	Ackmessage           string       `json:"ackmessage"`
+	StartTime            time.Time    `json:"start_time"`
+	EndTime              sql.NullTime `json:"end_time"`
+}
+
+type HistoryEventDetail struct {
+	ID            int32     `json:"id"`
+	EventID       int32     `json:"event_id"`
+	Object        string    `json:"object"`
+	Alarmcategory string    `json:"alarmcategory"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 type Rule struct {
