@@ -4,14 +4,28 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
+// 方便測試用, 讓每個unit test都在初始化狀態
+func clearDB(t *testing.T) {
+	_, err := MyDB.Exec("SET FOREIGN_KEY_CHECKS = 0;")
+	require.NoError(t, err)
+	_, err = MyDB.Exec("TRUNCATE history_event;")
+	require.NoError(t, err)
+	_, err = MyDB.Exec("TRUNCATE history_event_detail")
+	require.NoError(t, err)
+	_, err = MyDB.Exec("SET FOREIGN_KEY_CHECKS = 1;")
+	require.NoError(t, err)
+}
+
 func TestInitSQLAlarmRules(t *testing.T) {
-	InitSQLAlarmRulesFromCSV("./test_alarm.csv")
+	err := InitSQLAlarmRulesFromCSV("./test_alarm.csv")
+	//require.NoError(t, err)
 
 	var got string
 	row := MyDB.QueryRow("SELECT AlarmCategory FROM rules where object=? and AlarmCategoryOrder=?", "ID0012", 2)
-	err := row.Scan(&got)
+	err = row.Scan(&got)
 	Trace.Println(got)
 	require.NoError(t, err)
 	want := "Medium"
@@ -58,16 +72,131 @@ func TestAlarmTriggerCheck(t *testing.T) {
 }
 
 func TestReadAlarmStatusFromCache(t *testing.T) {
-	object := "aa"
+	object := "ID0011"
+	_, alarmCategory, _, _ := AlarmTriggerCheck(object, "1")
+	Trace.Println(alarmCategory)
+	err := GC.Set(object, AlarmCacher{
+		Object:                    object,
+		EventID:                   11,
+		AlarmCategoryCurrent:      alarmCategory,
+		AlarmCategoryOrderCurrent: "1",
+		AlarmCategoryHigh:         alarmCategory,
+		AlarmMessage:              "alarmMessage",
+		AckMessage:                "",
+		StartTime:                 time.Now()})
+	require.NoError(t, err)
+
 	want := "High"
-	GC.Set(object, []string{want, "ttyytest", ""})
+
 	t.Run("exact objectid", func(t *testing.T) {
-		_, got, _, _ := ReadAlarmStatusFromCache(object)
-		require.Equal(t, want, got)
+		_, AlarmCache := ReadAlarmStatusFromCache(object)
+		require.Equal(t, want, AlarmCache.AlarmCategoryHigh)
 	})
 	t.Run("wrong objectid", func(t *testing.T) {
-		_, got, _, _ := ReadAlarmStatusFromCache("wrongid")
-		require.Equal(t, "", got)
+		_, AlarmCache := ReadAlarmStatusFromCache("wrongid")
+		require.Equal(t, "", AlarmCache.AlarmCategoryHigh)
 	})
 
+}
+
+func TestHandleAlarmTriggeResult(t *testing.T) {
+	t.Run("trigger High from pass", func(t *testing.T) {
+		// 先清空DB
+		clearDB(t)
+
+		object := "ID0012"
+		err := HandleAlarmTriggeResult(object, "60")
+		require.NoError(t, err)
+		want := "High"
+		var got string
+		row := MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event order by id desc limit 1")
+		err = row.Scan(&got)
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+		vv, err := GC.Get(object)
+		require.NoError(t, err)
+		vvv, ok := vv.(AlarmCacher)
+		require.True(t, ok)
+		want = vvv.AlarmCategoryCurrent
+		require.Equal(t, want, got)
+
+	})
+	t.Run("trigger Medium from High", func(t *testing.T) {
+		// 先清空DB
+		clearDB(t)
+
+		object := "ID0013"
+		// 觸發High
+		err := HandleAlarmTriggeResult(object, "80")
+		require.NoError(t, err)
+		// 觸發Medium
+		err = HandleAlarmTriggeResult(object, "50")
+		require.NoError(t, err)
+		want := "High"
+		var got string
+		row := MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event order by id desc limit 1")
+		err = row.Scan(&got)
+		require.NoError(t, err)
+		// DB HighestAlarmCategory will not change
+		require.Equal(t, want, got)
+		vv, err := GC.Get(object)
+		require.NoError(t, err)
+		vvv, ok := vv.(AlarmCacher)
+		require.True(t, ok)
+		got = vvv.AlarmCategoryHigh
+		require.Equal(t, want, got)
+		// 測cache的current狀態
+		want = "Medium"
+		got = vvv.AlarmCategoryCurrent
+		require.Equal(t, want, got)
+	})
+	t.Run("Down grade from Low to pass", func(t *testing.T) {
+		// 先清空DB
+		clearDB(t)
+
+		object := "ID0014"
+		// 觸發Low
+		err := HandleAlarmTriggeResult(object, "21")
+		require.NoError(t, err)
+		// 回歸正常
+		err = HandleAlarmTriggeResult(object, "1")
+		require.NoError(t, err)
+
+		want := "pass"
+		vv, err := GC.Get(object)
+		require.NoError(t, err)
+		vvv, ok := vv.(AlarmCacher)
+		require.True(t, ok)
+		got := vvv.AlarmCategoryCurrent
+		require.Equal(t, want, got)
+	})
+	t.Run("解除警報", func(t *testing.T) {
+		// 先清空DB
+		clearDB(t)
+
+		object := "ID0012"
+		// 觸發Low
+		err := HandleAlarmTriggeResult(object, "11")
+		// 刻意修改ackmessage
+		tempAlarmCache, err := GC.Get(object)
+		require.NoError(t, err)
+		AlarmCache := tempAlarmCache.(AlarmCacher)
+		AlarmCache.AckMessage = "test insert"
+		// 寫進cache
+		err = GC.Set(object, AlarmCache)
+		require.NoError(t, err)
+
+		// 回歸正常
+		err = HandleAlarmTriggeResult(object, "1")
+		require.NoError(t, err)
+
+	})
+	t.Run("警報升級", func(t *testing.T) {
+		//	TODO 檢測cache歷史最高是否正確
+		//	TODO 檢測DB歷史最高是否正確
+		//	TODO 先觸發Low 再觸發Medium 再觸發High,  檢查每次的結果 cache SQL都要
+	})
+	t.Run("升升降降", func(t *testing.T) {
+		//	TODO 先觸發Low 再觸發High 再觸發Medium, 檢查每次的結果, cache SQL都要
+	})
 }

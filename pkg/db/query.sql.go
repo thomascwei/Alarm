@@ -170,7 +170,7 @@ func (q *Queries) ListAllRules(ctx context.Context) ([]Rule, error) {
 
 const SetAlarmEventEndTime = `-- name: SetAlarmEventEndTime :exec
 UPDATE history_event SET end_time = ?
-where id = ? and end_time is not null
+where id = ? and end_time is null
 `
 
 type SetAlarmEventEndTimeParams struct {

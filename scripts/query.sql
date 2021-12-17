@@ -28,15 +28,15 @@ VALUES (?, ?, ?, ?, ?);
 
 -- name: UpgradeAlarmCategory :exec
 UPDATE history_event SET AlarmCategoryOrder = ?, HighestAlarmCategory = ?
-where id = ? and end_time is not null;
+where id = ? and end_time is null;
 
 -- name: UpdateAlarmAckMessage :exec
 UPDATE history_event SET AckMessage = ?
-where id = ? and end_time is not null;
+where id = ? and end_time is null;
 
 -- name: SetAlarmEventEndTime :exec
 UPDATE history_event SET end_time = ?
-where id = ? and end_time is not null;
+where id = ? and end_time is null;
 
 -- name: CreateAlarmEventDetail :execresult
 INSERT INTO history_event_detail (Event_id, Object, AlarmCategory, created_at)
