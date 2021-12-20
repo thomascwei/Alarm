@@ -188,30 +188,35 @@ func SaveAllFuctionAsCache() (err error) {
 }
 
 // 依點位名稱及數值判斷是否觸發alarm
-func AlarmTriggerCheck(objectID string, value string) (trigger bool, alarmCategory, alarmMessage, alarmCategoryOrder string) {
+func AlarmTriggerCheck(objectID string, value string) (trigger bool, alarmCategory, alarmMessage string, alarmCategoryOrder int) {
 	// 從cache取得對應之function
 	funcMapCache, err := GC.Get("funcMap")
 
 	if err != nil {
 		Error.Println(err)
-		return false, "", "", ""
+		return false, "", "", -1
 	}
 	funcMap, ok := funcMapCache.(map[string]func(string) []string)
 	if !ok {
 		Error.Printf("function assert error %T\n", funcMap)
-		return false, "", "", ""
+		return false, "", "", -1
 	}
 
 	currentFunc, ok := funcMap[objectID]
 	if !ok {
-		return false, "", "", ""
+		return false, "", "", -1
 	}
 	result := currentFunc(value)
 	// 未達觸發條件
 	if result[0] == "pass" {
-		return false, "pass", "", ""
+		return false, "pass", "", -1
 	}
-	return true, result[0], result[1], result[2]
+	order, err := strconv.Atoi(result[2])
+	if err != nil {
+		Error.Println(err)
+		return false, "", "", -1
+	}
+	return true, result[0], result[1], order
 }
 
 // 從cache讀此點位當前alarm狀態, 有值返回(true,string), 無值返回(false,"")
@@ -233,20 +238,19 @@ func ReadAlarmStatusFromCache(objectID string) (bool, AlarmCacher) {
 // TODO 接AlarmTriggerCheck,依觸發結果進行後續邏輯運作
 func HandleAlarmTriggeResult(objectID string, value string) (err error) {
 	trigger, triggeredAlarmCategory, alarmMessage, alarmCategoryOrder := AlarmTriggerCheck(objectID, value)
+	if err != nil {
+		Error.Println(err)
+		return err
+	}
+	Trace.Println(trigger, triggeredAlarmCategory, alarmCategoryOrder)
 	exist, AlarmCache := ReadAlarmStatusFromCache(objectID)
 	currentTime := time.Now()
-	// trigger與alarmStatus各有兩種型態形成四個判斷
 	// 此次會觸發alarm  目前無alarm
 	if trigger && !exist {
 		// 產生新alarm, 先寫進SQL並取得eventid後寫進cache
-		intalarmCategoryOrder, err := strconv.Atoi(alarmCategoryOrder)
-		if err != nil {
-			Error.Println(err)
-			return err
-		}
 		sqlResult, err := queries.CreateAlarmEvent(ctx, db.CreateAlarmEventParams{
 			Object:               objectID,
-			Alarmcategoryorder:   int32(intalarmCategoryOrder),
+			Alarmcategoryorder:   int32(alarmCategoryOrder),
 			Highestalarmcategory: triggeredAlarmCategory,
 			Ackmessage:           "",
 			StartTime:            currentTime,
@@ -279,6 +283,7 @@ func HandleAlarmTriggeResult(objectID string, value string) (err error) {
 			AlarmCategoryCurrent:      triggeredAlarmCategory,
 			AlarmCategoryOrderCurrent: alarmCategoryOrder,
 			AlarmCategoryHigh:         triggeredAlarmCategory,
+			AlarmCategoryHighOrder:    alarmCategoryOrder,
 			AlarmMessage:              alarmMessage,
 			AckMessage:                "",
 			StartTime:                 currentTime})
@@ -288,37 +293,71 @@ func HandleAlarmTriggeResult(objectID string, value string) (err error) {
 		}
 		return nil
 	}
-	// 到達觸發標準 但目前有alarm且狀態有改變
-	if trigger && exist && triggeredAlarmCategory != AlarmCache.AlarmCategoryCurrent {
-		//	TODO 如果alarm狀態升級則更新AlarmCategoryHigh
+	// Alarm觸發且當前等級有改變
+	if trigger && exist && alarmCategoryOrder != AlarmCache.AlarmCategoryOrderCurrent {
+		// TODO 如果創歷史新高
+		if alarmCategoryOrder < AlarmCache.AlarmCategoryOrderCurrent {
+			//	更新SQL AlarmCategoryHigh
+			err = queries.UpgradeAlarmCategory(ctx, db.UpgradeAlarmCategoryParams{
+				Alarmcategoryorder:   int32(alarmCategoryOrder),
+				Highestalarmcategory: triggeredAlarmCategory,
+				ID:                   int32(AlarmCache.EventID),
+			})
+			if err != nil {
+				Error.Println(err)
+				return err
+			}
+			// 複寫cache
+			err = GC.Set(objectID, AlarmCacher{
+				Object:                    objectID,
+				EventID:                   AlarmCache.EventID,
+				AlarmCategoryCurrent:      triggeredAlarmCategory,
+				AlarmCategoryOrderCurrent: alarmCategoryOrder,
+				AlarmCategoryHigh:         triggeredAlarmCategory,
+				AlarmCategoryHighOrder:    alarmCategoryOrder,
+				AlarmMessage:              alarmMessage,
+				AckMessage:                AlarmCache.AckMessage,
+				StartTime:                 AlarmCache.StartTime})
+			if err != nil {
+				Error.Println(err)
+				return err
+			}
+			// 寫進SQL event detail
+			_, err = queries.CreateAlarmEventDetail(ctx, db.CreateAlarmEventDetailParams{
+				EventID:       int32(AlarmCache.EventID),
+				Object:        objectID,
+				Alarmcategory: triggeredAlarmCategory,
+				CreatedAt:     currentTime,
+			})
+			if err != nil {
+				Error.Println(err)
+				return err
+			}
+		} else {
+			//	未創新高
+		}
 
-		// 複寫cache中的alarmCategory,SQL event detail新增一筆
-		// 複寫cache
+	}
+	// Alarm觸發但等級降低
+	if trigger && exist && triggeredAlarmCategory >= AlarmCache.AlarmCategoryCurrent {
+		// TODO 複寫cache
 		err = GC.Set(objectID, AlarmCacher{
 			Object:                    objectID,
 			EventID:                   AlarmCache.EventID,
 			AlarmCategoryCurrent:      triggeredAlarmCategory,
 			AlarmCategoryOrderCurrent: alarmCategoryOrder,
 			AlarmCategoryHigh:         AlarmCache.AlarmCategoryHigh,
+			AlarmCategoryHighOrder:    AlarmCache.AlarmCategoryHighOrder,
 			AlarmMessage:              alarmMessage,
-			AckMessage:                "",
-			StartTime:                 currentTime})
+			AckMessage:                AlarmCache.AckMessage,
+			StartTime:                 AlarmCache.StartTime})
 		if err != nil {
 			Error.Println(err)
 			return err
 		}
-		// 寫進SQL event detail
-		_, err = queries.CreateAlarmEventDetail(ctx, db.CreateAlarmEventDetailParams{
-			EventID:       int32(AlarmCache.EventID),
-			Object:        objectID,
-			Alarmcategory: triggeredAlarmCategory,
-			CreatedAt:     currentTime,
-		})
-		if err != nil {
-			Error.Println(err)
-			return err
-		}
+		// TODO 寫進SQL event detail
 	}
+	// TODO 觸發且等級維持不變
 	// 此次未達觸發(已正常) 目前仍在告警且未ack
 	if !trigger && exist && triggeredAlarmCategory != AlarmCache.AlarmCategoryCurrent {
 		// 檢查此alarm是否已ack, 是刪除cache, sql新增一筆並補完eventid, 尚未ack則只複寫cache
@@ -330,6 +369,7 @@ func HandleAlarmTriggeResult(objectID string, value string) (err error) {
 				AlarmCategoryCurrent:      triggeredAlarmCategory,
 				AlarmCategoryOrderCurrent: alarmCategoryOrder,
 				AlarmCategoryHigh:         AlarmCache.AlarmCategoryHigh,
+				AlarmCategoryHighOrder:    AlarmCache.AlarmCategoryHighOrder,
 				AlarmMessage:              alarmMessage,
 				AckMessage:                "",
 				StartTime:                 currentTime})
@@ -369,6 +409,8 @@ func HandleAlarmTriggeResult(objectID string, value string) (err error) {
 			}
 		}
 	}
+
+	// TODO 此次未達觸發(已正常) 目前且已ack
 	return
 }
 

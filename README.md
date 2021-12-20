@@ -45,3 +45,6 @@ protoc -I=. --go_out=plugins=grpc:pkg proto/*.proto
 
 ![](png/ms.png)
 ![](png/DB.png)
+Alarm觸發邏輯
+![](png/AlarmTriggerRules.png)
+

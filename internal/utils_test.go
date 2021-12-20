@@ -8,7 +8,7 @@ import (
 )
 
 // 方便測試用, 讓每個unit test都在初始化狀態
-func clearDB(t *testing.T) {
+func clearAlarmDBHistory(t *testing.T) {
 	_, err := MyDB.Exec("SET FOREIGN_KEY_CHECKS = 0;")
 	require.NoError(t, err)
 	_, err = MyDB.Exec("TRUNCATE history_event;")
@@ -102,7 +102,7 @@ func TestReadAlarmStatusFromCache(t *testing.T) {
 func TestHandleAlarmTriggeResult(t *testing.T) {
 	t.Run("trigger High from pass", func(t *testing.T) {
 		// 先清空DB
-		clearDB(t)
+		clearAlarmDBHistory(t)
 
 		object := "ID0012"
 		err := HandleAlarmTriggeResult(object, "60")
@@ -123,7 +123,7 @@ func TestHandleAlarmTriggeResult(t *testing.T) {
 	})
 	t.Run("trigger Medium from High", func(t *testing.T) {
 		// 先清空DB
-		clearDB(t)
+		clearAlarmDBHistory(t)
 
 		object := "ID0013"
 		// 觸發High
@@ -152,7 +152,7 @@ func TestHandleAlarmTriggeResult(t *testing.T) {
 	})
 	t.Run("Down grade from Low to pass", func(t *testing.T) {
 		// 先清空DB
-		clearDB(t)
+		clearAlarmDBHistory(t)
 
 		object := "ID0014"
 		// 觸發Low
@@ -172,7 +172,7 @@ func TestHandleAlarmTriggeResult(t *testing.T) {
 	})
 	t.Run("解除警報", func(t *testing.T) {
 		// 先清空DB
-		clearDB(t)
+		clearAlarmDBHistory(t)
 
 		object := "ID0012"
 		// 觸發Low
@@ -191,12 +191,55 @@ func TestHandleAlarmTriggeResult(t *testing.T) {
 		require.NoError(t, err)
 
 	})
-	t.Run("警報升級", func(t *testing.T) {
-		//	TODO 檢測cache歷史最高是否正確
-		//	TODO 檢測DB歷史最高是否正確
-		//	TODO 先觸發Low 再觸發Medium 再觸發High,  檢查每次的結果 cache SQL都要
+	t.Run("升升降降先pass再ack", func(t *testing.T) {
+		// 先清空DB
+		clearAlarmDBHistory(t)
+		object := "ID0013"
+
+		// 第一階段觸發Low
+		want := "Low"
+		err := HandleAlarmTriggeResult(object, "11")
+		require.NoError(t, err)
+		//	檢測DB歷史最高是否正確
+		var got string
+		row := MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event limit 1")
+		err = row.Scan(&got)
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+		AlarmCache, err := GC.Get(object)
+		require.NoError(t, err)
+		AlarmCacheAsserted, ok := AlarmCache.(AlarmCacher)
+		require.True(t, ok)
+		got = AlarmCacheAsserted.AlarmCategoryHigh
+		require.Equal(t, want, got)
+		//	檢測當前cache alarmCategory是否正確
+		got = AlarmCacheAsserted.AlarmCategoryCurrent
+		require.Equal(t, want, got)
+
+		//	TODO 第二階段觸發Medium
+		want = "Medium"
+		err = HandleAlarmTriggeResult(object, "50")
+		require.NoError(t, err)
+		row = MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event limit 1")
+		err = row.Scan(&got)
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+		AlarmCache, err = GC.Get(object)
+		require.NoError(t, err)
+		AlarmCacheAsserted, ok = AlarmCache.(AlarmCacher)
+		require.True(t, ok)
+		got = AlarmCacheAsserted.AlarmCategoryHigh
+		require.Equal(t, want, got)
+		//	檢測當前cache alarmCategory是否正確
+		got = AlarmCacheAsserted.AlarmCategoryCurrent
+		require.Equal(t, want, got)
+
+		//	TODO 第三階段觸發High
+		//	TODO 第四階段觸發Low
+		//	TODO 第五階段沒觸發pass
+		//	TODO 第六階段寫進ack後close
 	})
-	t.Run("升升降降", func(t *testing.T) {
+	t.Run("升升降降先ack再pass", func(t *testing.T) {
 		//	TODO 先觸發Low 再觸發High 再觸發Medium, 檢查每次的結果, cache SQL都要
 	})
 }
