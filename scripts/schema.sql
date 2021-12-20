@@ -2,29 +2,29 @@ CREATE TABLE `rules` (
   `id` int PRIMARY KEY AUTO_INCREMENT,
   `Object` varchar(100) NOT NULL,
   `AlarmCategoryOrder` int NOT NULL,
-  `AlarmLogic` varchar(255) NOT NULL,
-  `TriggerValue` varchar(255) NOT NULL,
-  `AlarmCategory` varchar(255) NOT NULL,
+  `AlarmLogic` varchar(10) NOT NULL,
+  `TriggerValue` varchar(100) NOT NULL,
+  `AlarmCategory` varchar(100) NOT NULL,
   `AlamrMessage` varchar(255) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT now()
+  `created_at` datetime NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE `history_event` (
   `id` int PRIMARY KEY AUTO_INCREMENT,
   `Object` varchar(100) NOT NULL,
   `AlarmCategoryOrder` int NOT NULL,
-  `HighestAlarmCategory` varchar(255) NOT NULL,
+  `HighestAlarmCategory` varchar(100) NOT NULL,
   `AckMessage` varchar(255) NOT NULL,
-  `start_time` timestamp NOT NULL DEFAULT now(),
-  `end_time` timestamp
+  `start_time` datetime NOT NULL DEFAULT (now()),
+  `end_time` datetime
 );
 
 CREATE TABLE `history_event_detail` (
   `id` int PRIMARY KEY AUTO_INCREMENT,
   `Event_id` int NOT NULL,
   `Object` varchar(100) NOT NULL,
-  `AlarmCategory` varchar(255) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT now()
+  `AlarmCategory` varchar(100) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT (now())
 );
 
 ALTER TABLE `history_event_detail` ADD FOREIGN KEY (`Event_id`) REFERENCES `history_event` (`id`);

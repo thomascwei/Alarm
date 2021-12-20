@@ -40,7 +40,7 @@ var (
 
 	// DBconfig     = viper.LoadConfig("./config")
 	DBconfig     = viper.LoadConfig(path.Join(rootPath, "config"))
-	DBConnection = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=true",
+	DBConnection = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=true&loc=Local",
 		DBconfig.User, DBconfig.Password, DBconfig.Host, DBconfig.Port, DBconfig.DB)
 	//DBConnection = "thomas:123456@tcp(host.docker.internal:3306)/schedule?charset=utf8&parseTime=true"
 	MyDB, _ = sql.Open("mysql", DBConnection)

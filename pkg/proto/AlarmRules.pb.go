@@ -13,6 +13,7 @@ import (
 	status "google.golang.org/grpc/status"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 )
@@ -109,20 +110,327 @@ func (x *SQLresponse) GetInfo() string {
 	return ""
 }
 
+type AlarmAckReq struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Object     string `protobuf:"bytes,1,opt,name=Object,proto3" json:"Object,omitempty"`
+	AckMessage string `protobuf:"bytes,2,opt,name=AckMessage,proto3" json:"AckMessage,omitempty"`
+}
+
+func (x *AlarmAckReq) Reset() {
+	*x = AlarmAckReq{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_AlarmRules_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AlarmAckReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AlarmAckReq) ProtoMessage() {}
+
+func (x *AlarmAckReq) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_AlarmRules_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AlarmAckReq.ProtoReflect.Descriptor instead.
+func (*AlarmAckReq) Descriptor() ([]byte, []int) {
+	return file_proto_AlarmRules_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AlarmAckReq) GetObject() string {
+	if x != nil {
+		return x.Object
+	}
+	return ""
+}
+
+func (x *AlarmAckReq) GetAckMessage() string {
+	if x != nil {
+		return x.AckMessage
+	}
+	return ""
+}
+
+type AlarmAckResp struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Info string `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+}
+
+func (x *AlarmAckResp) Reset() {
+	*x = AlarmAckResp{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_AlarmRules_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AlarmAckResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AlarmAckResp) ProtoMessage() {}
+
+func (x *AlarmAckResp) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_AlarmRules_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AlarmAckResp.ProtoReflect.Descriptor instead.
+func (*AlarmAckResp) Descriptor() ([]byte, []int) {
+	return file_proto_AlarmRules_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AlarmAckResp) GetInfo() string {
+	if x != nil {
+		return x.Info
+	}
+	return ""
+}
+
+type SingleAlarmCache struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Object                    string                 `protobuf:"bytes,1,opt,name=Object,proto3" json:"Object,omitempty"`
+	EventID                   int32                  `protobuf:"varint,2,opt,name=EventID,proto3" json:"EventID,omitempty"`
+	AlarmCategoryCurrent      string                 `protobuf:"bytes,3,opt,name=AlarmCategoryCurrent,proto3" json:"AlarmCategoryCurrent,omitempty"`
+	AlarmCategoryOrderCurrent int32                  `protobuf:"varint,4,opt,name=AlarmCategoryOrderCurrent,proto3" json:"AlarmCategoryOrderCurrent,omitempty"`
+	AlarmCategoryHigh         string                 `protobuf:"bytes,5,opt,name=AlarmCategoryHigh,proto3" json:"AlarmCategoryHigh,omitempty"`
+	AlarmCategoryHighOrder    int32                  `protobuf:"varint,6,opt,name=AlarmCategoryHighOrder,proto3" json:"AlarmCategoryHighOrder,omitempty"`
+	AlarmMessage              string                 `protobuf:"bytes,7,opt,name=AlarmMessage,proto3" json:"AlarmMessage,omitempty"`
+	AckMessage                string                 `protobuf:"bytes,8,opt,name=AckMessage,proto3" json:"AckMessage,omitempty"`
+	StartTime                 *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=StartTime,proto3" json:"StartTime,omitempty"`
+}
+
+func (x *SingleAlarmCache) Reset() {
+	*x = SingleAlarmCache{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_AlarmRules_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SingleAlarmCache) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SingleAlarmCache) ProtoMessage() {}
+
+func (x *SingleAlarmCache) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_AlarmRules_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SingleAlarmCache.ProtoReflect.Descriptor instead.
+func (*SingleAlarmCache) Descriptor() ([]byte, []int) {
+	return file_proto_AlarmRules_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *SingleAlarmCache) GetObject() string {
+	if x != nil {
+		return x.Object
+	}
+	return ""
+}
+
+func (x *SingleAlarmCache) GetEventID() int32 {
+	if x != nil {
+		return x.EventID
+	}
+	return 0
+}
+
+func (x *SingleAlarmCache) GetAlarmCategoryCurrent() string {
+	if x != nil {
+		return x.AlarmCategoryCurrent
+	}
+	return ""
+}
+
+func (x *SingleAlarmCache) GetAlarmCategoryOrderCurrent() int32 {
+	if x != nil {
+		return x.AlarmCategoryOrderCurrent
+	}
+	return 0
+}
+
+func (x *SingleAlarmCache) GetAlarmCategoryHigh() string {
+	if x != nil {
+		return x.AlarmCategoryHigh
+	}
+	return ""
+}
+
+func (x *SingleAlarmCache) GetAlarmCategoryHighOrder() int32 {
+	if x != nil {
+		return x.AlarmCategoryHighOrder
+	}
+	return 0
+}
+
+func (x *SingleAlarmCache) GetAlarmMessage() string {
+	if x != nil {
+		return x.AlarmMessage
+	}
+	return ""
+}
+
+func (x *SingleAlarmCache) GetAckMessage() string {
+	if x != nil {
+		return x.AckMessage
+	}
+	return ""
+}
+
+func (x *SingleAlarmCache) GetStartTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartTime
+	}
+	return nil
+}
+
+type CurrentAlarmResp struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AlarmEvents []*SingleAlarmCache `protobuf:"bytes,1,rep,name=AlarmEvents,proto3" json:"AlarmEvents,omitempty"`
+}
+
+func (x *CurrentAlarmResp) Reset() {
+	*x = CurrentAlarmResp{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_AlarmRules_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *CurrentAlarmResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CurrentAlarmResp) ProtoMessage() {}
+
+func (x *CurrentAlarmResp) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_AlarmRules_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CurrentAlarmResp.ProtoReflect.Descriptor instead.
+func (*CurrentAlarmResp) Descriptor() ([]byte, []int) {
+	return file_proto_AlarmRules_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CurrentAlarmResp) GetAlarmEvents() []*SingleAlarmCache {
+	if x != nil {
+		return x.AlarmEvents
+	}
+	return nil
+}
+
 var File_proto_AlarmRules_proto protoreflect.FileDescriptor
 
 var file_proto_AlarmRules_proto_rawDesc = []byte{
 	0x0a, 0x16, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x52, 0x75, 0x6c,
-	0x65, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x04, 0x6d, 0x61, 0x69, 0x6e, 0x22, 0x07,
-	0x0a, 0x05, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x22, 0x21, 0x0a, 0x0b, 0x53, 0x51, 0x4c, 0x72, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x69, 0x6e, 0x66, 0x6f, 0x18, 0x01,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x69, 0x6e, 0x66, 0x6f, 0x32, 0x47, 0x0a, 0x11, 0x41, 0x6c,
-	0x61, 0x72, 0x6d, 0x52, 0x75, 0x6c, 0x65, 0x73, 0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x72, 0x12,
-	0x32, 0x0a, 0x0e, 0x49, 0x6e, 0x69, 0x74, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x52, 0x75, 0x6c, 0x65,
-	0x73, 0x12, 0x0b, 0x2e, 0x6d, 0x61, 0x69, 0x6e, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x1a, 0x11,
-	0x2e, 0x6d, 0x61, 0x69, 0x6e, 0x2e, 0x53, 0x51, 0x4c, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x22, 0x00, 0x42, 0x08, 0x5a, 0x06, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x04, 0x6d, 0x61, 0x69, 0x6e, 0x1a, 0x1f,
+	0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f,
+	0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22,
+	0x07, 0x0a, 0x05, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x22, 0x21, 0x0a, 0x0b, 0x53, 0x51, 0x4c, 0x72,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x69, 0x6e, 0x66, 0x6f, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x69, 0x6e, 0x66, 0x6f, 0x22, 0x45, 0x0a, 0x0b, 0x41,
+	0x6c, 0x61, 0x72, 0x6d, 0x41, 0x63, 0x6b, 0x52, 0x65, 0x71, 0x12, 0x16, 0x0a, 0x06, 0x4f, 0x62,
+	0x6a, 0x65, 0x63, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x4f, 0x62, 0x6a, 0x65,
+	0x63, 0x74, 0x12, 0x1e, 0x0a, 0x0a, 0x41, 0x63, 0x6b, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x41, 0x63, 0x6b, 0x4d, 0x65, 0x73, 0x73, 0x61,
+	0x67, 0x65, 0x22, 0x22, 0x0a, 0x0c, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x41, 0x63, 0x6b, 0x52, 0x65,
+	0x73, 0x70, 0x12, 0x12, 0x0a, 0x04, 0x69, 0x6e, 0x66, 0x6f, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x04, 0x69, 0x6e, 0x66, 0x6f, 0x22, 0x9a, 0x03, 0x0a, 0x10, 0x53, 0x69, 0x6e, 0x67, 0x6c,
+	0x65, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x43, 0x61, 0x63, 0x68, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x4f,
+	0x62, 0x6a, 0x65, 0x63, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x4f, 0x62, 0x6a,
+	0x65, 0x63, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x49, 0x44, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x05, 0x52, 0x07, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x49, 0x44, 0x12, 0x32, 0x0a,
+	0x14, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x43, 0x61, 0x74, 0x65, 0x67, 0x6f, 0x72, 0x79, 0x43, 0x75,
+	0x72, 0x72, 0x65, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x14, 0x41, 0x6c, 0x61,
+	0x72, 0x6d, 0x43, 0x61, 0x74, 0x65, 0x67, 0x6f, 0x72, 0x79, 0x43, 0x75, 0x72, 0x72, 0x65, 0x6e,
+	0x74, 0x12, 0x3c, 0x0a, 0x19, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x43, 0x61, 0x74, 0x65, 0x67, 0x6f,
+	0x72, 0x79, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x43, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x18, 0x04,
+	0x20, 0x01, 0x28, 0x05, 0x52, 0x19, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x43, 0x61, 0x74, 0x65, 0x67,
+	0x6f, 0x72, 0x79, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x43, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x12,
+	0x2c, 0x0a, 0x11, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x43, 0x61, 0x74, 0x65, 0x67, 0x6f, 0x72, 0x79,
+	0x48, 0x69, 0x67, 0x68, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x11, 0x41, 0x6c, 0x61, 0x72,
+	0x6d, 0x43, 0x61, 0x74, 0x65, 0x67, 0x6f, 0x72, 0x79, 0x48, 0x69, 0x67, 0x68, 0x12, 0x36, 0x0a,
+	0x16, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x43, 0x61, 0x74, 0x65, 0x67, 0x6f, 0x72, 0x79, 0x48, 0x69,
+	0x67, 0x68, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x18, 0x06, 0x20, 0x01, 0x28, 0x05, 0x52, 0x16, 0x41,
+	0x6c, 0x61, 0x72, 0x6d, 0x43, 0x61, 0x74, 0x65, 0x67, 0x6f, 0x72, 0x79, 0x48, 0x69, 0x67, 0x68,
+	0x4f, 0x72, 0x64, 0x65, 0x72, 0x12, 0x22, 0x0a, 0x0c, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x4d, 0x65,
+	0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x07, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x41, 0x6c, 0x61,
+	0x72, 0x6d, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x1e, 0x0a, 0x0a, 0x41, 0x63, 0x6b,
+	0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x08, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x41,
+	0x63, 0x6b, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x38, 0x0a, 0x09, 0x53, 0x74, 0x61,
+	0x72, 0x74, 0x54, 0x69, 0x6d, 0x65, 0x18, 0x09, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x67,
+	0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x54,
+	0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x09, 0x53, 0x74, 0x61, 0x72, 0x74, 0x54,
+	0x69, 0x6d, 0x65, 0x22, 0x4c, 0x0a, 0x10, 0x43, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x41, 0x6c,
+	0x61, 0x72, 0x6d, 0x52, 0x65, 0x73, 0x70, 0x12, 0x38, 0x0a, 0x0b, 0x41, 0x6c, 0x61, 0x72, 0x6d,
+	0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x6d,
+	0x61, 0x69, 0x6e, 0x2e, 0x53, 0x69, 0x6e, 0x67, 0x6c, 0x65, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x43,
+	0x61, 0x63, 0x68, 0x65, 0x52, 0x0b, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x45, 0x76, 0x65, 0x6e, 0x74,
+	0x73, 0x32, 0xc1, 0x01, 0x0a, 0x11, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x52, 0x75, 0x6c, 0x65, 0x73,
+	0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x72, 0x12, 0x32, 0x0a, 0x0e, 0x49, 0x6e, 0x69, 0x74, 0x41,
+	0x6c, 0x61, 0x72, 0x6d, 0x52, 0x75, 0x6c, 0x65, 0x73, 0x12, 0x0b, 0x2e, 0x6d, 0x61, 0x69, 0x6e,
+	0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x1a, 0x11, 0x2e, 0x6d, 0x61, 0x69, 0x6e, 0x2e, 0x53, 0x51,
+	0x4c, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x3b, 0x0a, 0x10, 0x55,
+	0x70, 0x64, 0x61, 0x74, 0x65, 0x41, 0x63, 0x6b, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12,
+	0x11, 0x2e, 0x6d, 0x61, 0x69, 0x6e, 0x2e, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x41, 0x63, 0x6b, 0x52,
+	0x65, 0x71, 0x1a, 0x12, 0x2e, 0x6d, 0x61, 0x69, 0x6e, 0x2e, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x41,
+	0x63, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x22, 0x00, 0x12, 0x3b, 0x0a, 0x12, 0x43, 0x75, 0x72, 0x72,
+	0x65, 0x6e, 0x74, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x12, 0x0b,
+	0x2e, 0x6d, 0x61, 0x69, 0x6e, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x1a, 0x16, 0x2e, 0x6d, 0x61,
+	0x69, 0x6e, 0x2e, 0x43, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x52,
+	0x65, 0x73, 0x70, 0x22, 0x00, 0x42, 0x08, 0x5a, 0x06, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
+	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -137,19 +445,30 @@ func file_proto_AlarmRules_proto_rawDescGZIP() []byte {
 	return file_proto_AlarmRules_proto_rawDescData
 }
 
-var file_proto_AlarmRules_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_proto_AlarmRules_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_proto_AlarmRules_proto_goTypes = []interface{}{
-	(*Empty)(nil),       // 0: main.Empty
-	(*SQLresponse)(nil), // 1: main.SQLresponse
+	(*Empty)(nil),                 // 0: main.Empty
+	(*SQLresponse)(nil),           // 1: main.SQLresponse
+	(*AlarmAckReq)(nil),           // 2: main.AlarmAckReq
+	(*AlarmAckResp)(nil),          // 3: main.AlarmAckResp
+	(*SingleAlarmCache)(nil),      // 4: main.SingleAlarmCache
+	(*CurrentAlarmResp)(nil),      // 5: main.CurrentAlarmResp
+	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
 }
 var file_proto_AlarmRules_proto_depIdxs = []int32{
-	0, // 0: main.AlarmRulesManager.InitAlarmRules:input_type -> main.Empty
-	1, // 1: main.AlarmRulesManager.InitAlarmRules:output_type -> main.SQLresponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	6, // 0: main.SingleAlarmCache.StartTime:type_name -> google.protobuf.Timestamp
+	4, // 1: main.CurrentAlarmResp.AlarmEvents:type_name -> main.SingleAlarmCache
+	0, // 2: main.AlarmRulesManager.InitAlarmRules:input_type -> main.Empty
+	2, // 3: main.AlarmRulesManager.UpdateAckMessage:input_type -> main.AlarmAckReq
+	0, // 4: main.AlarmRulesManager.CurrentAlarmEvents:input_type -> main.Empty
+	1, // 5: main.AlarmRulesManager.InitAlarmRules:output_type -> main.SQLresponse
+	3, // 6: main.AlarmRulesManager.UpdateAckMessage:output_type -> main.AlarmAckResp
+	5, // 7: main.AlarmRulesManager.CurrentAlarmEvents:output_type -> main.CurrentAlarmResp
+	5, // [5:8] is the sub-list for method output_type
+	2, // [2:5] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_proto_AlarmRules_proto_init() }
@@ -182,6 +501,54 @@ func file_proto_AlarmRules_proto_init() {
 				return nil
 			}
 		}
+		file_proto_AlarmRules_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AlarmAckReq); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_AlarmRules_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AlarmAckResp); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_AlarmRules_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SingleAlarmCache); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_AlarmRules_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*CurrentAlarmResp); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -189,7 +556,7 @@ func file_proto_AlarmRules_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_proto_AlarmRules_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
@@ -216,6 +583,10 @@ const _ = grpc.SupportPackageIsVersion6
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type AlarmRulesManagerClient interface {
 	InitAlarmRules(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*SQLresponse, error)
+	//  接收ack message的rpc, input是object與message
+	UpdateAckMessage(ctx context.Context, in *AlarmAckReq, opts ...grpc.CallOption) (*AlarmAckResp, error)
+	//  返回當前alarm清單的rpc
+	CurrentAlarmEvents(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*CurrentAlarmResp, error)
 }
 
 type alarmRulesManagerClient struct {
@@ -235,9 +606,31 @@ func (c *alarmRulesManagerClient) InitAlarmRules(ctx context.Context, in *Empty,
 	return out, nil
 }
 
+func (c *alarmRulesManagerClient) UpdateAckMessage(ctx context.Context, in *AlarmAckReq, opts ...grpc.CallOption) (*AlarmAckResp, error) {
+	out := new(AlarmAckResp)
+	err := c.cc.Invoke(ctx, "/main.AlarmRulesManager/UpdateAckMessage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *alarmRulesManagerClient) CurrentAlarmEvents(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*CurrentAlarmResp, error) {
+	out := new(CurrentAlarmResp)
+	err := c.cc.Invoke(ctx, "/main.AlarmRulesManager/CurrentAlarmEvents", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AlarmRulesManagerServer is the server API for AlarmRulesManager service.
 type AlarmRulesManagerServer interface {
 	InitAlarmRules(context.Context, *Empty) (*SQLresponse, error)
+	//  接收ack message的rpc, input是object與message
+	UpdateAckMessage(context.Context, *AlarmAckReq) (*AlarmAckResp, error)
+	//  返回當前alarm清單的rpc
+	CurrentAlarmEvents(context.Context, *Empty) (*CurrentAlarmResp, error)
 }
 
 // UnimplementedAlarmRulesManagerServer can be embedded to have forward compatible implementations.
@@ -246,6 +639,12 @@ type UnimplementedAlarmRulesManagerServer struct {
 
 func (*UnimplementedAlarmRulesManagerServer) InitAlarmRules(context.Context, *Empty) (*SQLresponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InitAlarmRules not implemented")
+}
+func (*UnimplementedAlarmRulesManagerServer) UpdateAckMessage(context.Context, *AlarmAckReq) (*AlarmAckResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateAckMessage not implemented")
+}
+func (*UnimplementedAlarmRulesManagerServer) CurrentAlarmEvents(context.Context, *Empty) (*CurrentAlarmResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CurrentAlarmEvents not implemented")
 }
 
 func RegisterAlarmRulesManagerServer(s *grpc.Server, srv AlarmRulesManagerServer) {
@@ -270,6 +669,42 @@ func _AlarmRulesManager_InitAlarmRules_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AlarmRulesManager_UpdateAckMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AlarmAckReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlarmRulesManagerServer).UpdateAckMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/main.AlarmRulesManager/UpdateAckMessage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlarmRulesManagerServer).UpdateAckMessage(ctx, req.(*AlarmAckReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AlarmRulesManager_CurrentAlarmEvents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AlarmRulesManagerServer).CurrentAlarmEvents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/main.AlarmRulesManager/CurrentAlarmEvents",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AlarmRulesManagerServer).CurrentAlarmEvents(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _AlarmRulesManager_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "main.AlarmRulesManager",
 	HandlerType: (*AlarmRulesManagerServer)(nil),
@@ -277,6 +712,14 @@ var _AlarmRulesManager_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "InitAlarmRules",
 			Handler:    _AlarmRulesManager_InitAlarmRules_Handler,
+		},
+		{
+			MethodName: "UpdateAckMessage",
+			Handler:    _AlarmRulesManager_UpdateAckMessage_Handler,
+		},
+		{
+			MethodName: "CurrentAlarmEvents",
+			Handler:    _AlarmRulesManager_CurrentAlarmEvents_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

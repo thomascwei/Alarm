@@ -4,14 +4,44 @@ option go_package = "/proto";
 
 package main;
 
+import "google/protobuf/timestamp.proto";
+
 service AlarmRulesManager {
   rpc InitAlarmRules (Empty) returns (SQLresponse) {}
-  //  TODO 新增一個接收ack message的rpc, input是object與message
+  //  接收ack message的rpc, input是object與message
+  rpc UpdateAckMessage(AlarmAckReq) returns (AlarmAckResp){}
+  //  返回當前alarm清單的rpc
+  rpc CurrentAlarmEvents (Empty) returns (CurrentAlarmResp) {}
 }
 
 message Empty {}
 message SQLresponse{
-    string info = 1;
+  string info = 1;
 }
+
+message AlarmAckReq{
+  string Object = 1;
+  string AckMessage = 2;
+}
+message AlarmAckResp{
+  string info = 1;
+}
+
+message SingleAlarmCache{
+  string Object = 1;
+  int32 EventID = 2;
+  string AlarmCategoryCurrent = 3;
+  int32 AlarmCategoryOrderCurrent = 4;
+  string AlarmCategoryHigh = 5;
+  int32 AlarmCategoryHighOrder = 6;
+  string AlarmMessage = 7;
+  string AckMessage = 8;
+  google.protobuf.Timestamp StartTime = 9;
+}
+
+message CurrentAlarmResp {
+  repeated SingleAlarmCache AlarmEvents = 1;
+}
+
 
 // protoc -I=. --go_out=plugins=grpc:pkg proto/*.proto
