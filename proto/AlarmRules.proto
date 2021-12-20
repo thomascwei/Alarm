@@ -6,6 +6,7 @@ package main;
 
 service AlarmRulesManager {
   rpc InitAlarmRules (Empty) returns (SQLresponse) {}
+  //  TODO 新增一個接收ack message的rpc, input是object與message
 }
 
 message Empty {}

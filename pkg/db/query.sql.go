@@ -194,7 +194,7 @@ func (q *Queries) TruncateRules(ctx context.Context) error {
 
 const UpdateAlarmAckMessage = `-- name: UpdateAlarmAckMessage :exec
 UPDATE history_event SET AckMessage = ?
-where id = ? and end_time is not null
+where id = ? and end_time is null
 `
 
 type UpdateAlarmAckMessageParams struct {
@@ -243,7 +243,7 @@ func (q *Queries) UpdateRule(ctx context.Context, arg UpdateRuleParams) error {
 
 const UpgradeAlarmCategory = `-- name: UpgradeAlarmCategory :exec
 UPDATE history_event SET AlarmCategoryOrder = ?, HighestAlarmCategory = ?
-where id = ? and end_time is not null
+where id = ? and end_time is null
 `
 
 type UpgradeAlarmCategoryParams struct {

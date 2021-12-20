@@ -235,96 +235,110 @@ func ReadAlarmStatusFromCache(objectID string) (bool, AlarmCacher) {
 	return true, result
 }
 
-// TODO 接AlarmTriggerCheck,依觸發結果進行後續邏輯運作
+// 接AlarmTriggerCheck,依觸發結果進行後續邏輯運作
 func HandleAlarmTriggeResult(objectID string, value string) (err error) {
 	trigger, triggeredAlarmCategory, alarmMessage, alarmCategoryOrder := AlarmTriggerCheck(objectID, value)
-	if err != nil {
-		Error.Println(err)
-		return err
-	}
 	Trace.Println(trigger, triggeredAlarmCategory, alarmCategoryOrder)
 	exist, AlarmCache := ReadAlarmStatusFromCache(objectID)
 	currentTime := time.Now()
-	// 此次會觸發alarm  目前無alarm
-	if trigger && !exist {
-		// 產生新alarm, 先寫進SQL並取得eventid後寫進cache
-		sqlResult, err := queries.CreateAlarmEvent(ctx, db.CreateAlarmEventParams{
-			Object:               objectID,
-			Alarmcategoryorder:   int32(alarmCategoryOrder),
-			Highestalarmcategory: triggeredAlarmCategory,
-			Ackmessage:           "",
-			StartTime:            currentTime,
-		})
-		if err != nil {
-			Error.Println(err)
-			return err
-		}
-		eventID, err := sqlResult.LastInsertId()
-		//Trace.Println(eventID)
-		if err != nil {
-			Error.Println(err)
-			return err
-		}
-		// 寫進SQL event detail
-		_, err = queries.CreateAlarmEventDetail(ctx, db.CreateAlarmEventDetailParams{
-			EventID:       int32(eventID),
-			Object:        objectID,
-			Alarmcategory: triggeredAlarmCategory,
-			CreatedAt:     currentTime,
-		})
-		if err != nil {
-			Error.Println(err)
-			return err
-		}
-		// 寫進cache
-		err = GC.Set(objectID, AlarmCacher{
-			Object:                    objectID,
-			EventID:                   eventID,
-			AlarmCategoryCurrent:      triggeredAlarmCategory,
-			AlarmCategoryOrderCurrent: alarmCategoryOrder,
-			AlarmCategoryHigh:         triggeredAlarmCategory,
-			AlarmCategoryHighOrder:    alarmCategoryOrder,
-			AlarmMessage:              alarmMessage,
-			AckMessage:                "",
-			StartTime:                 currentTime})
-		if err != nil {
-			Error.Println(err)
-			return err
-		}
-		return nil
-	}
-	// Alarm觸發且當前等級有改變
-	if trigger && exist && alarmCategoryOrder != AlarmCache.AlarmCategoryOrderCurrent {
-		// TODO 如果創歷史新高
-		if alarmCategoryOrder < AlarmCache.AlarmCategoryOrderCurrent {
-			//	更新SQL AlarmCategoryHigh
-			err = queries.UpgradeAlarmCategory(ctx, db.UpgradeAlarmCategoryParams{
+
+	if trigger { // 此次HotData到達觸發標準
+		Trace.Println()
+		if exist { //	目前有alarm
+			Trace.Println()
+			if alarmCategoryOrder == AlarmCache.AlarmCategoryOrderCurrent { // alarm等級不變
+				// 新增SQL event detail
+				_, err = queries.CreateAlarmEventDetail(ctx, db.CreateAlarmEventDetailParams{
+					EventID:       int32(AlarmCache.EventID),
+					Object:        objectID,
+					Alarmcategory: triggeredAlarmCategory,
+					CreatedAt:     currentTime,
+				})
+				if err != nil {
+					Error.Println(err)
+					return err
+				}
+			} else { //	alarm等級改變
+				if alarmCategoryOrder < AlarmCache.AlarmCategoryOrderCurrent { // alarm升級
+					// 更新cache,更新SQL event等級與新增SQL event detail
+					//	更新cache
+					AlarmCache.AlarmCategoryOrderCurrent = alarmCategoryOrder
+					AlarmCache.AlarmCategoryCurrent = triggeredAlarmCategory
+					AlarmCache.AlarmCategoryHighOrder = alarmCategoryOrder
+					AlarmCache.AlarmCategoryHigh = triggeredAlarmCategory
+					err = GC.Set(objectID, AlarmCache)
+					if err != nil {
+						Error.Println(err)
+						return err
+					}
+					//	更新SQL event等級
+					err = queries.UpgradeAlarmCategory(ctx, db.UpgradeAlarmCategoryParams{
+						Alarmcategoryorder:   int32(alarmCategoryOrder),
+						Highestalarmcategory: triggeredAlarmCategory,
+						ID:                   int32(AlarmCache.EventID),
+					})
+					if err != nil {
+						Error.Println(err)
+						return err
+					}
+					// 新增SQL event detail
+					_, err = queries.CreateAlarmEventDetail(ctx, db.CreateAlarmEventDetailParams{
+						EventID:       int32(AlarmCache.EventID),
+						Object:        objectID,
+						Alarmcategory: triggeredAlarmCategory,
+						CreatedAt:     currentTime,
+					})
+					if err != nil {
+						Error.Println(err)
+						return err
+					}
+				} else { //	alarm降級
+					// 	更新cache與新增SQL event detail
+					//	更新cache
+					AlarmCache.AlarmCategoryOrderCurrent = alarmCategoryOrder
+					AlarmCache.AlarmCategoryCurrent = triggeredAlarmCategory
+					err = GC.Set(objectID, AlarmCache)
+					if err != nil {
+						Error.Println(err)
+						return err
+					}
+					// 新增SQL event detail
+					_, err = queries.CreateAlarmEventDetail(ctx, db.CreateAlarmEventDetailParams{
+						EventID:       int32(AlarmCache.EventID),
+						Object:        objectID,
+						Alarmcategory: triggeredAlarmCategory,
+						CreatedAt:     currentTime,
+					})
+					if err != nil {
+						Error.Println(err)
+						return err
+					}
+				}
+			}
+		} else { // 目前無alarm
+			// 新增alarm,新增SQL event,cache, 與event detail
+			// 產生新alarm, 先寫進SQL並取得eventid後寫進cache
+			sqlResult, err := queries.CreateAlarmEvent(ctx, db.CreateAlarmEventParams{
+				Object:               objectID,
 				Alarmcategoryorder:   int32(alarmCategoryOrder),
 				Highestalarmcategory: triggeredAlarmCategory,
-				ID:                   int32(AlarmCache.EventID),
+				Ackmessage:           "",
+				StartTime:            currentTime,
 			})
 			if err != nil {
 				Error.Println(err)
 				return err
 			}
-			// 複寫cache
-			err = GC.Set(objectID, AlarmCacher{
-				Object:                    objectID,
-				EventID:                   AlarmCache.EventID,
-				AlarmCategoryCurrent:      triggeredAlarmCategory,
-				AlarmCategoryOrderCurrent: alarmCategoryOrder,
-				AlarmCategoryHigh:         triggeredAlarmCategory,
-				AlarmCategoryHighOrder:    alarmCategoryOrder,
-				AlarmMessage:              alarmMessage,
-				AckMessage:                AlarmCache.AckMessage,
-				StartTime:                 AlarmCache.StartTime})
+
+			eventID, err := sqlResult.LastInsertId()
+			//Trace.Println(eventID)
 			if err != nil {
 				Error.Println(err)
 				return err
 			}
 			// 寫進SQL event detail
 			_, err = queries.CreateAlarmEventDetail(ctx, db.CreateAlarmEventDetailParams{
-				EventID:       int32(AlarmCache.EventID),
+				EventID:       int32(eventID),
 				Object:        objectID,
 				Alarmcategory: triggeredAlarmCategory,
 				CreatedAt:     currentTime,
@@ -333,43 +347,14 @@ func HandleAlarmTriggeResult(objectID string, value string) (err error) {
 				Error.Println(err)
 				return err
 			}
-		} else {
-			//	未創新高
-		}
-
-	}
-	// Alarm觸發但等級降低
-	if trigger && exist && triggeredAlarmCategory >= AlarmCache.AlarmCategoryCurrent {
-		// TODO 複寫cache
-		err = GC.Set(objectID, AlarmCacher{
-			Object:                    objectID,
-			EventID:                   AlarmCache.EventID,
-			AlarmCategoryCurrent:      triggeredAlarmCategory,
-			AlarmCategoryOrderCurrent: alarmCategoryOrder,
-			AlarmCategoryHigh:         AlarmCache.AlarmCategoryHigh,
-			AlarmCategoryHighOrder:    AlarmCache.AlarmCategoryHighOrder,
-			AlarmMessage:              alarmMessage,
-			AckMessage:                AlarmCache.AckMessage,
-			StartTime:                 AlarmCache.StartTime})
-		if err != nil {
-			Error.Println(err)
-			return err
-		}
-		// TODO 寫進SQL event detail
-	}
-	// TODO 觸發且等級維持不變
-	// 此次未達觸發(已正常) 目前仍在告警且未ack
-	if !trigger && exist && triggeredAlarmCategory != AlarmCache.AlarmCategoryCurrent {
-		// 檢查此alarm是否已ack, 是刪除cache, sql新增一筆並補完eventid, 尚未ack則只複寫cache
-		// user尚未ack, 複寫cache & 寫進SQL event detail
-		if AlarmCache.AckMessage == "" {
+			// 寫進cache
 			err = GC.Set(objectID, AlarmCacher{
 				Object:                    objectID,
-				EventID:                   AlarmCache.EventID,
+				EventID:                   int(eventID),
 				AlarmCategoryCurrent:      triggeredAlarmCategory,
 				AlarmCategoryOrderCurrent: alarmCategoryOrder,
-				AlarmCategoryHigh:         AlarmCache.AlarmCategoryHigh,
-				AlarmCategoryHighOrder:    AlarmCache.AlarmCategoryHighOrder,
+				AlarmCategoryHigh:         triggeredAlarmCategory,
+				AlarmCategoryHighOrder:    alarmCategoryOrder,
 				AlarmMessage:              alarmMessage,
 				AckMessage:                "",
 				StartTime:                 currentTime})
@@ -377,50 +362,126 @@ func HandleAlarmTriggeResult(objectID string, value string) (err error) {
 				Error.Println(err)
 				return err
 			}
-			// 寫進SQL event detail
-			_, err = queries.CreateAlarmEventDetail(ctx, db.CreateAlarmEventDetailParams{
-				EventID:       int32(AlarmCache.EventID),
-				Object:        objectID,
-				Alarmcategory: triggeredAlarmCategory,
-				CreatedAt:     currentTime,
-			})
-		} else {
-			Trace.Println("完成")
-			// 刪除此筆cache
-			GC.Remove(objectID)
-			// 寫進SQL event detail
-			_, err = queries.CreateAlarmEventDetail(ctx, db.CreateAlarmEventDetailParams{
-				EventID:       int32(AlarmCache.EventID),
-				Object:        objectID,
-				Alarmcategory: triggeredAlarmCategory,
-				CreatedAt:     currentTime,
-			})
-			// SQL Event更新完成時間
-			err = queries.SetAlarmEventEndTime(ctx, db.SetAlarmEventEndTimeParams{
-				EndTime: sql.NullTime{
-					Time:  currentTime,
-					Valid: true,
-				},
-				ID: int32(AlarmCache.EventID),
-			})
-			if err != nil {
-				Error.Println(err)
-				return err
+		}
+	} else { //	此次HotData未達觸發標準
+		if exist { // 目前有alarm
+			if AlarmCache.AckMessage == "" { // 人員未ack
+				if alarmCategoryOrder != AlarmCache.AlarmCategoryOrderCurrent { // alarm category不同
+					//	更新cache與新增SQL event detail
+					//	更新cache
+					AlarmCache.AlarmCategoryOrderCurrent = alarmCategoryOrder
+					AlarmCache.AlarmCategoryCurrent = triggeredAlarmCategory
+					err = GC.Set(objectID, AlarmCache)
+					if err != nil {
+						Error.Println(err)
+						return err
+					}
+					// 新增SQL event detail
+					_, err = queries.CreateAlarmEventDetail(ctx, db.CreateAlarmEventDetailParams{
+						EventID:       int32(AlarmCache.EventID),
+						Object:        objectID,
+						Alarmcategory: triggeredAlarmCategory,
+						CreatedAt:     currentTime,
+					})
+					if err != nil {
+						Error.Println(err)
+						return err
+					}
+				} else { // alarm category相同
+					// do nothing
+				}
+			} else { //人員已ack
+				//	刪除cache, 新增SQL event detail, 更新SQL event的endtime
+				//	刪除cache
+				ok := GC.Remove(objectID)
+				if !ok {
+					return errors.New("remove cached alarm fail")
+				}
+				// 新增SQL event detail
+				_, err = queries.CreateAlarmEventDetail(ctx, db.CreateAlarmEventDetailParams{
+					EventID:       int32(AlarmCache.EventID),
+					Object:        objectID,
+					Alarmcategory: triggeredAlarmCategory,
+					CreatedAt:     currentTime,
+				})
+				if err != nil {
+					Error.Println(err)
+					return err
+				}
+				//	更新SQL event的endtime
+				err = queries.SetAlarmEventEndTime(ctx, db.SetAlarmEventEndTimeParams{
+					EndTime: sql.NullTime{
+						Time:  currentTime,
+						Valid: true,
+					},
+					ID: int32(AlarmCache.EventID),
+				})
+				if err != nil {
+					Error.Println(err)
+					return err
+				}
 			}
+		} else { // 目前無alarm
+			// do nothing
 		}
 	}
 
-	// TODO 此次未達觸發(已正常) 目前且已ack
 	return
 }
 
-// TODO 接收前端傳來的ack信息寫進cache
-func ReceiveAckMessage(objectID string, message string) {
-	fmt.Println("")
+// 接收前端傳來的ack信息寫進cache
+func ReceiveAckMessage(objectID string, message string) (err error) {
 	// 檢查alarm狀態
-	// alarm狀態仍未告警中
-	// 寫進cache ack message
-	// alarm狀態為已恢復正常則
-	// ack message 寫進SQL並補完eventid
-	// 刪除cache
+	exist, AlarmCache := ReadAlarmStatusFromCache(objectID)
+	if !exist {
+		return errors.New("this alarm not exist")
+	}
+	if AlarmCache.AlarmCategoryOrderCurrent == -1 { // alarm狀態為已恢復正常
+		// 刪除cache, 更新SQL event的EndTime與AckMessage
+		//	刪除cache
+		ok := GC.Remove(objectID)
+		if !ok {
+			return errors.New("remove cached alarm fail")
+		}
+		// 更新SQL event的AckMessage
+		err = queries.UpdateAlarmAckMessage(ctx, db.UpdateAlarmAckMessageParams{
+			Ackmessage: message,
+			ID:         int32(AlarmCache.EventID),
+		})
+		if err != nil {
+			Error.Println(err)
+			return err
+		}
+		//	更新SQL event的EndTime
+		err = queries.SetAlarmEventEndTime(ctx, db.SetAlarmEventEndTimeParams{
+			EndTime: sql.NullTime{
+				Time:  time.Now(),
+				Valid: true,
+			},
+			ID: int32(AlarmCache.EventID),
+		})
+		if err != nil {
+			Error.Println(err)
+			return err
+		}
+
+	} else { // alarm狀態仍在告警中
+		// 寫進cache ack message
+		AlarmCache.AckMessage = message
+		err = GC.Set(objectID, AlarmCache)
+		if err != nil {
+			Error.Println(err)
+			return err
+		}
+		// 更新SQL AckMessage
+		err = queries.UpdateAlarmAckMessage(ctx, db.UpdateAlarmAckMessageParams{
+			Ackmessage: message,
+			ID:         int32(AlarmCache.EventID),
+		})
+		if err != nil {
+			Error.Println(err)
+			return err
+		}
+	}
+	return
 }
