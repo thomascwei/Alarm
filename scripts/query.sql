@@ -6,6 +6,12 @@ VALUES (?, ?, ?, ?, ?, ?, ?);
 SELECT *
 FROM rules;
 
+-- name: ListAllActiveAlarms :many
+SELECT *
+FROM history_event
+where end_time is null;
+
+
 -- name: UpdateRule :exec
 UPDATE rules
 set AlarmCategoryOrder=?,
@@ -24,13 +30,14 @@ WHERE id = ?;
 
 
 -- name: CreateAlarmEvent :execresult
-INSERT INTO history_event (Object, AlarmCategoryOrder, HighestAlarmCategory, AckMessage, start_time)
-VALUES (?, ?, ?, ?, ?);
+INSERT INTO history_event (Object, AlarmCategoryOrder, HighestAlarmCategory, AlarmMessage, AckMessage, start_time)
+VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: UpgradeAlarmCategory :exec
 UPDATE history_event
 SET AlarmCategoryOrder   = ?,
-    HighestAlarmCategory = ?
+    HighestAlarmCategory = ?,
+    AlarmMessage         =?
 where id = ?
   and end_time is null;
 

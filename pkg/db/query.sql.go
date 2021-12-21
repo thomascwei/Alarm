@@ -10,14 +10,15 @@ import (
 )
 
 const CreateAlarmEvent = `-- name: CreateAlarmEvent :execresult
-INSERT INTO history_event (Object, AlarmCategoryOrder, HighestAlarmCategory, AckMessage, start_time)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO history_event (Object, AlarmCategoryOrder, HighestAlarmCategory, AlarmMessage, AckMessage, start_time)
+VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type CreateAlarmEventParams struct {
 	Object               string    `json:"object"`
 	Alarmcategoryorder   int32     `json:"alarmcategoryorder"`
 	Highestalarmcategory string    `json:"highestalarmcategory"`
+	Alarmmessage         string    `json:"alarmmessage"`
 	Ackmessage           string    `json:"ackmessage"`
 	StartTime            time.Time `json:"start_time"`
 }
@@ -27,6 +28,7 @@ func (q *Queries) CreateAlarmEvent(ctx context.Context, arg CreateAlarmEventPara
 		arg.Object,
 		arg.Alarmcategoryorder,
 		arg.Highestalarmcategory,
+		arg.Alarmmessage,
 		arg.Ackmessage,
 		arg.StartTime,
 	)
@@ -91,8 +93,46 @@ func (q *Queries) DeleteRule(ctx context.Context, id int32) error {
 	return err
 }
 
+const ListAllActiveAlarms = `-- name: ListAllActiveAlarms :many
+SELECT id, object, alarmcategoryorder, highestalarmcategory, alarmmessage, ackmessage, start_time, end_time
+FROM history_event
+where end_time is null
+`
+
+func (q *Queries) ListAllActiveAlarms(ctx context.Context) ([]HistoryEvent, error) {
+	rows, err := q.query(ctx, q.listAllActiveAlarmsStmt, ListAllActiveAlarms)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []HistoryEvent
+	for rows.Next() {
+		var i HistoryEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.Object,
+			&i.Alarmcategoryorder,
+			&i.Highestalarmcategory,
+			&i.Alarmmessage,
+			&i.Ackmessage,
+			&i.StartTime,
+			&i.EndTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListAllHistoryBaseOnStartTime = `-- name: ListAllHistoryBaseOnStartTime :many
-SELECT id, object, alarmcategoryorder, highestalarmcategory, ackmessage, start_time, end_time
+SELECT id, object, alarmcategoryorder, highestalarmcategory, alarmmessage, ackmessage, start_time, end_time
 FROM history_event
 where start_time >= ?
   and start_time < ?
@@ -117,6 +157,7 @@ func (q *Queries) ListAllHistoryBaseOnStartTime(ctx context.Context, arg ListAll
 			&i.Object,
 			&i.Alarmcategoryorder,
 			&i.Highestalarmcategory,
+			&i.Alarmmessage,
 			&i.Ackmessage,
 			&i.StartTime,
 			&i.EndTime,
@@ -255,7 +296,8 @@ func (q *Queries) UpdateRule(ctx context.Context, arg UpdateRuleParams) error {
 const UpgradeAlarmCategory = `-- name: UpgradeAlarmCategory :exec
 UPDATE history_event
 SET AlarmCategoryOrder   = ?,
-    HighestAlarmCategory = ?
+    HighestAlarmCategory = ?,
+    AlarmMessage         =?
 where id = ?
   and end_time is null
 `
@@ -263,10 +305,16 @@ where id = ?
 type UpgradeAlarmCategoryParams struct {
 	Alarmcategoryorder   int32  `json:"alarmcategoryorder"`
 	Highestalarmcategory string `json:"highestalarmcategory"`
+	Alarmmessage         string `json:"alarmmessage"`
 	ID                   int32  `json:"id"`
 }
 
 func (q *Queries) UpgradeAlarmCategory(ctx context.Context, arg UpgradeAlarmCategoryParams) error {
-	_, err := q.exec(ctx, q.upgradeAlarmCategoryStmt, UpgradeAlarmCategory, arg.Alarmcategoryorder, arg.Highestalarmcategory, arg.ID)
+	_, err := q.exec(ctx, q.upgradeAlarmCategoryStmt, UpgradeAlarmCategory,
+		arg.Alarmcategoryorder,
+		arg.Highestalarmcategory,
+		arg.Alarmmessage,
+		arg.ID,
+	)
 	return err
 }

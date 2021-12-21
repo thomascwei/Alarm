@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"errors"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -72,21 +73,44 @@ func (s *Server) InitAlarmRules(ctx context.Context, in *proto.Empty) (*proto.SQ
 
 // TODO接收hotdata
 func (s *Server) Insert(ctx context.Context, input *proto.HotDataRequest) (*proto.HotDataResponse, error) {
-	// TODO 處理hot data
 	Trace.Println(input.ObjectID, input.Value)
+	err := HandleAlarmTriggerResult(input.ObjectID, input.Value)
+	if err != nil {
+		return nil, err
+	}
 	return &proto.HotDataResponse{StatusOK: true, Message: "ok"}, nil
 }
 
 //  接收ack message的rpc, input是object與message
-func (s *Server) UpdateAckMessage(context.Context, *proto.AlarmAckReq) (*proto.AlarmAckResp, error) {
-	// TODO
-	return &proto.AlarmAckResp{}, nil
+func (s *Server) UpdateAckMessage(ctx context.Context, input *proto.AlarmAckReq) (*proto.AlarmAckResp, error) {
+	err := ReceiveAckMessage(input.Object, input.AckMessage)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.AlarmAckResp{Info: "ok"}, nil
 }
 
 //  返回當前alarm清單的rpc
 func (s *Server) CurrentAlarmEvents(context.Context, *proto.Empty) (*proto.CurrentAlarmResp, error) {
-	// TODO
-	return &proto.CurrentAlarmResp{}, nil
+	result, err := ListAllActiveAlarmsFromCache()
+	if err != nil {
+		return nil, err
+	}
+	resp := proto.CurrentAlarmResp{}
+	for _, single := range result {
+		resp.AlarmEvents = append(resp.AlarmEvents, &proto.SingleAlarmCache{
+			Object:                    single.Object,
+			EventID:                   int32(single.EventID),
+			AlarmCategoryCurrent:      single.AlarmCategoryCurrent,
+			AlarmCategoryOrderCurrent: int32(single.AlarmCategoryOrderCurrent),
+			AlarmCategoryHigh:         single.AlarmCategoryHigh,
+			AlarmCategoryHighOrder:    int32(single.AlarmCategoryHighOrder),
+			AlarmMessage:              single.AlarmMessage,
+			AckMessage:                single.AckMessage,
+			StartTime:                 timestamppb.New(single.StartTime),
+		})
+	}
+	return &resp, nil
 }
 
 func GrpcServer() {

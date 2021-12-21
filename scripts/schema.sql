@@ -15,6 +15,7 @@ CREATE TABLE `history_event` (
   `Object` varchar(100) NOT NULL,
   `AlarmCategoryOrder` int NOT NULL,
   `HighestAlarmCategory` varchar(100) NOT NULL,
+  `AlarmMessage` varchar(255) NOT NULL,
   `AckMessage` varchar(255) NOT NULL,
   `start_time` datetime NOT NULL DEFAULT now(),
   `end_time` datetime

@@ -47,11 +47,39 @@ var (
 	queries = db.New(MyDB)
 )
 
+const FunctionCacheKey = "funcMap"
+
 // 服務初始化調用
 func init() {
 	err := SaveAllFuctionAsCache()
 	if err != nil {
 		log.Fatal(err)
+	}
+	// 初始化時將SQL內現存未取消alarm存進cache
+	LoadActiveAlarmsToCache()
+}
+
+// 將SQL內現存未取消alarm存進cache
+func LoadActiveAlarmsToCache() {
+	events, err := queries.ListAllActiveAlarms(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, event := range events {
+		err = GC.Set(event.Object, AlarmCacher{
+			Object:                    event.Object,
+			EventID:                   int(event.ID),
+			AlarmCategoryCurrent:      "",
+			AlarmCategoryOrderCurrent: 0,
+			AlarmCategoryHigh:         event.Highestalarmcategory,
+			AlarmCategoryHighOrder:    int(event.Alarmcategoryorder),
+			AlarmMessage:              event.Alarmmessage,
+			AckMessage:                event.Ackmessage,
+			StartTime:                 event.StartTime,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -101,6 +129,10 @@ func InitSQLAlarmRulesFromCSV(path string) (err error) {
 	}
 	if logString != "" {
 		err = errors.New(logString)
+	}
+	err = SaveAllFuctionAsCache()
+	if err != nil {
+		log.Fatal(err)
 	}
 	return
 }
@@ -182,7 +214,7 @@ func SaveAllFuctionAsCache() (err error) {
 		funcMap[objid] = v.Interface().(func(string) []string)
 	}
 	// Trace.Println(funcMap)
-	err = GC.Set("funcMap", funcMap)
+	err = GC.Set(FunctionCacheKey, funcMap)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -206,8 +238,9 @@ func AlarmTriggerCheck(objectID string, value string) (trigger bool, alarmCatego
 	}
 
 	currentFunc, ok := funcMap[objectID]
+	// 代表id錯誤, alarmCategory返回-2
 	if !ok {
-		return false, "", "", -1, ""
+		return false, "", "", -2, ""
 	}
 	result := currentFunc(value)
 	// 未達觸發條件
@@ -239,9 +272,13 @@ func ReadAlarmStatusFromCache(objectID string) (bool, AlarmCacher) {
 }
 
 // 接AlarmTriggerCheck,依觸發結果進行後續邏輯運作
-func HandleAlarmTriggeResult(objectID string, value string) (err error) {
+func HandleAlarmTriggerResult(objectID string, value string) (err error) {
 	trigger, triggeredAlarmCategory, alarmMessage, alarmCategoryOrder, ackMethod := AlarmTriggerCheck(objectID, value)
-	Trace.Println(trigger, triggeredAlarmCategory, alarmCategoryOrder)
+	//Trace.Println(trigger, triggeredAlarmCategory, alarmCategoryOrder)
+	// 若Object id 有誤alarmCategoryOrder為-2
+	if alarmCategoryOrder == -2 {
+		return errors.New("ObjectID Not Found")
+	}
 	exist, AlarmCache := ReadAlarmStatusFromCache(objectID)
 	currentTime := time.Now()
 
@@ -278,6 +315,7 @@ func HandleAlarmTriggeResult(objectID string, value string) (err error) {
 					err = queries.UpgradeAlarmCategory(ctx, db.UpgradeAlarmCategoryParams{
 						Alarmcategoryorder:   int32(alarmCategoryOrder),
 						Highestalarmcategory: triggeredAlarmCategory,
+						Alarmmessage:         alarmMessage,
 						ID:                   int32(AlarmCache.EventID),
 					})
 					if err != nil {
@@ -325,6 +363,7 @@ func HandleAlarmTriggeResult(objectID string, value string) (err error) {
 				Object:               objectID,
 				Alarmcategoryorder:   int32(alarmCategoryOrder),
 				Highestalarmcategory: triggeredAlarmCategory,
+				Alarmmessage:         alarmMessage,
 				Ackmessage:           ackMethod,
 				StartTime:            currentTime,
 			})
@@ -487,6 +526,21 @@ func ReceiveAckMessage(objectID string, message string) (err error) {
 			Error.Println(err)
 			return err
 		}
+	}
+	return
+}
+
+// TODO 列出cache中的未結alarm清單
+func ListAllActiveAlarmsFromCache() (result []AlarmCacher, err error) {
+	raw := GC.GetALL(false)
+	delete(raw, FunctionCacheKey)
+	for _, v := range raw {
+		single, ok := v.(AlarmCacher)
+		if !ok {
+			Error.Println("AlarmCatcher type assert error")
+			return nil, errors.New("AlarmCatcher type assert error")
+		}
+		result = append(result, single)
 	}
 	return
 }

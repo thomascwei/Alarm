@@ -12,6 +12,7 @@ type HistoryEvent struct {
 	Object               string       `json:"object"`
 	Alarmcategoryorder   int32        `json:"alarmcategoryorder"`
 	Highestalarmcategory string       `json:"highestalarmcategory"`
+	Alarmmessage         string       `json:"alarmmessage"`
 	Ackmessage           string       `json:"ackmessage"`
 	StartTime            time.Time    `json:"start_time"`
 	EndTime              sql.NullTime `json:"end_time"`

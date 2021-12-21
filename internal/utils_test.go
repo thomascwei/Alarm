@@ -108,7 +108,7 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 		object := "ID0012"
 		GC.Remove(object)
 
-		err := HandleAlarmTriggeResult(object, "60")
+		err := HandleAlarmTriggerResult(object, "60")
 		require.NoError(t, err)
 		want := "High"
 		var got string
@@ -131,10 +131,10 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 		GC.Remove(object)
 
 		// 觸發High
-		err := HandleAlarmTriggeResult(object, "80")
+		err := HandleAlarmTriggerResult(object, "80")
 		require.NoError(t, err)
 		// 觸發Medium
-		err = HandleAlarmTriggeResult(object, "50")
+		err = HandleAlarmTriggerResult(object, "50")
 		require.NoError(t, err)
 		want := "High"
 		var got string
@@ -161,10 +161,10 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 		GC.Remove(object)
 
 		// 觸發Low
-		err := HandleAlarmTriggeResult(object, "21")
+		err := HandleAlarmTriggerResult(object, "21")
 		require.NoError(t, err)
 		// 回歸正常
-		err = HandleAlarmTriggeResult(object, "1")
+		err = HandleAlarmTriggerResult(object, "1")
 		require.NoError(t, err)
 
 		want := "pass"
@@ -181,12 +181,12 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 		object := "ID0012"
 		GC.Remove(object)
 		// 觸發Low
-		err := HandleAlarmTriggeResult(object, "60")
+		err := HandleAlarmTriggerResult(object, "60")
 		require.NoError(t, err)
 		err = ReceiveAckMessage(object, "test insert")
 		require.NoError(t, err)
 		// 回歸正常
-		err = HandleAlarmTriggeResult(object, "1")
+		err = HandleAlarmTriggerResult(object, "1")
 		require.NoError(t, err)
 
 	})
@@ -199,7 +199,7 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 
 		// 第一階段觸發Low
 		want := "Low"
-		err := HandleAlarmTriggeResult(object, "11")
+		err := HandleAlarmTriggerResult(object, "11")
 		require.NoError(t, err)
 		//	檢測DB歷史最高是否正確
 		var got string
@@ -219,7 +219,7 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 
 		//	第二階段觸發Medium
 		want = "Medium"
-		err = HandleAlarmTriggeResult(object, "50")
+		err = HandleAlarmTriggerResult(object, "50")
 		require.NoError(t, err)
 		row = MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event limit 1")
 		err = row.Scan(&got)
@@ -237,7 +237,7 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 
 		//	第三階段觸發High
 		want = "High"
-		err = HandleAlarmTriggeResult(object, "80")
+		err = HandleAlarmTriggerResult(object, "80")
 		require.NoError(t, err)
 		row = MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event limit 1")
 		err = row.Scan(&got)
@@ -254,7 +254,7 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 		require.Equal(t, want, got)
 
 		//	第四階段觸發Low
-		err = HandleAlarmTriggeResult(object, "11")
+		err = HandleAlarmTriggerResult(object, "11")
 		require.NoError(t, err)
 		//	檢測DB歷史最高是否正確
 		row = MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event limit 1")
@@ -272,7 +272,7 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 		require.Equal(t, "Low", got)
 
 		//	第五階段觸發pass
-		err = HandleAlarmTriggeResult(object, "0")
+		err = HandleAlarmTriggerResult(object, "0")
 		require.NoError(t, err)
 		//	檢測DB歷史最高是否正確
 		row = MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event limit 1")
@@ -320,7 +320,7 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 		GC.Remove(object)
 		// 第一階段觸發Low
 		want := "Low"
-		err := HandleAlarmTriggeResult(object, "11")
+		err := HandleAlarmTriggerResult(object, "11")
 		require.NoError(t, err)
 		//	檢測DB歷史最高是否正確
 		var got string
@@ -368,7 +368,7 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 		require.Equal(t, "Low", got)
 
 		//	第三階段收到pass
-		err = HandleAlarmTriggeResult(object, "0")
+		err = HandleAlarmTriggerResult(object, "0")
 		require.NoError(t, err)
 		//	檢測DB歷史最高是否正確
 		row = MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event limit 1")
@@ -396,7 +396,7 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 		GC.Remove(object)
 		// 第一階段觸發Low
 		want := "Low"
-		err := HandleAlarmTriggeResult(object, "11")
+		err := HandleAlarmTriggerResult(object, "11")
 		require.NoError(t, err)
 		//	檢測DB歷史最高是否正確
 		var got string
@@ -416,7 +416,7 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 
 		//	第二階段觸發High
 		want = "High"
-		err = HandleAlarmTriggeResult(object, "80.05")
+		err = HandleAlarmTriggerResult(object, "80.05")
 		require.NoError(t, err)
 		row = MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event limit 1")
 		err = row.Scan(&got)
@@ -433,7 +433,7 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 		require.Equal(t, want, got)
 
 		//	第三階段降到pass後直接結束
-		err = HandleAlarmTriggeResult(object, "0.1")
+		err = HandleAlarmTriggerResult(object, "0.1")
 		require.NoError(t, err)
 		//	檢測DB歷史最高是否正確
 		row = MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event limit 1")
@@ -449,4 +449,20 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 		AlarmCache, err = GC.Get(object)
 		require.Error(t, err)
 	})
+}
+
+// TODO
+func TestListAllActiveAlarmsFromCache(t *testing.T) {
+	// 先清空DB
+	clearAlarmDBHistory(t)
+	GC.Remove("ID0012")
+	GC.Remove("ID0015")
+
+	err := HandleAlarmTriggerResult("ID0012", "80.05")
+	require.NoError(t, err)
+	err = HandleAlarmTriggerResult("ID0015", "80.05")
+	require.NoError(t, err)
+	result, err := ListAllActiveAlarmsFromCache()
+	require.NoError(t, err)
+	require.Equal(t, 2, len(result))
 }

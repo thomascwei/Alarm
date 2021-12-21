@@ -44,4 +44,4 @@ message CurrentAlarmResp {
 }
 
 
-// protoc -I=. --go_out=plugins=grpc:pkg proto/*.proto
+// protoc -I=. --go_out=plugins=grpc:pkg --js_out=js:pkg proto/*.proto

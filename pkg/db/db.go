@@ -34,6 +34,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteRuleStmt, err = db.PrepareContext(ctx, DeleteRule); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteRule: %w", err)
 	}
+	if q.listAllActiveAlarmsStmt, err = db.PrepareContext(ctx, ListAllActiveAlarms); err != nil {
+		return nil, fmt.Errorf("error preparing query ListAllActiveAlarms: %w", err)
+	}
 	if q.listAllHistoryBaseOnStartTimeStmt, err = db.PrepareContext(ctx, ListAllHistoryBaseOnStartTime); err != nil {
 		return nil, fmt.Errorf("error preparing query ListAllHistoryBaseOnStartTime: %w", err)
 	}
@@ -78,6 +81,11 @@ func (q *Queries) Close() error {
 	if q.deleteRuleStmt != nil {
 		if cerr := q.deleteRuleStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteRuleStmt: %w", cerr)
+		}
+	}
+	if q.listAllActiveAlarmsStmt != nil {
+		if cerr := q.listAllActiveAlarmsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listAllActiveAlarmsStmt: %w", cerr)
 		}
 	}
 	if q.listAllHistoryBaseOnStartTimeStmt != nil {
@@ -158,6 +166,7 @@ type Queries struct {
 	createAlarmEventDetailStmt        *sql.Stmt
 	createRuleStmt                    *sql.Stmt
 	deleteRuleStmt                    *sql.Stmt
+	listAllActiveAlarmsStmt           *sql.Stmt
 	listAllHistoryBaseOnStartTimeStmt *sql.Stmt
 	listAllRulesStmt                  *sql.Stmt
 	setAlarmEventEndTimeStmt          *sql.Stmt
@@ -175,6 +184,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		createAlarmEventDetailStmt:        q.createAlarmEventDetailStmt,
 		createRuleStmt:                    q.createRuleStmt,
 		deleteRuleStmt:                    q.deleteRuleStmt,
+		listAllActiveAlarmsStmt:           q.listAllActiveAlarmsStmt,
 		listAllHistoryBaseOnStartTimeStmt: q.listAllHistoryBaseOnStartTimeStmt,
 		listAllRulesStmt:                  q.listAllRulesStmt,
 		setAlarmEventEndTimeStmt:          q.setAlarmEventEndTimeStmt,
