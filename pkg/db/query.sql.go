@@ -54,8 +54,8 @@ func (q *Queries) CreateAlarmEventDetail(ctx context.Context, arg CreateAlarmEve
 }
 
 const CreateRule = `-- name: CreateRule :execresult
-INSERT INTO rules (object, AlarmCategoryOrder, AlarmLogic, TriggerValue, AlarmCategory, AlamrMessage)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO rules (object, AlarmCategoryOrder, AlarmLogic, TriggerValue, AlarmCategory, AlarmMessage, AckMethod)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateRuleParams struct {
@@ -64,7 +64,8 @@ type CreateRuleParams struct {
 	Alarmlogic         string `json:"alarmlogic"`
 	Triggervalue       string `json:"triggervalue"`
 	Alarmcategory      string `json:"alarmcategory"`
-	Alamrmessage       string `json:"alamrmessage"`
+	Alarmmessage       string `json:"alarmmessage"`
+	Ackmethod          string `json:"ackmethod"`
 }
 
 func (q *Queries) CreateRule(ctx context.Context, arg CreateRuleParams) (sql.Result, error) {
@@ -74,7 +75,8 @@ func (q *Queries) CreateRule(ctx context.Context, arg CreateRuleParams) (sql.Res
 		arg.Alarmlogic,
 		arg.Triggervalue,
 		arg.Alarmcategory,
-		arg.Alamrmessage,
+		arg.Alarmmessage,
+		arg.Ackmethod,
 	)
 }
 
@@ -92,7 +94,8 @@ func (q *Queries) DeleteRule(ctx context.Context, id int32) error {
 const ListAllHistoryBaseOnStartTime = `-- name: ListAllHistoryBaseOnStartTime :many
 SELECT id, object, alarmcategoryorder, highestalarmcategory, ackmessage, start_time, end_time
 FROM history_event
-where start_time>=? and start_time<?
+where start_time >= ?
+  and start_time < ?
 `
 
 type ListAllHistoryBaseOnStartTimeParams struct {
@@ -132,7 +135,7 @@ func (q *Queries) ListAllHistoryBaseOnStartTime(ctx context.Context, arg ListAll
 }
 
 const ListAllRules = `-- name: ListAllRules :many
-SELECT id, object, alarmcategoryorder, alarmlogic, triggervalue, alarmcategory, alamrmessage, created_at
+SELECT id, object, alarmcategoryorder, alarmlogic, triggervalue, alarmcategory, alarmmessage, ackmethod, created_at
 FROM rules
 `
 
@@ -152,7 +155,8 @@ func (q *Queries) ListAllRules(ctx context.Context) ([]Rule, error) {
 			&i.Alarmlogic,
 			&i.Triggervalue,
 			&i.Alarmcategory,
-			&i.Alamrmessage,
+			&i.Alarmmessage,
+			&i.Ackmethod,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -169,8 +173,10 @@ func (q *Queries) ListAllRules(ctx context.Context) ([]Rule, error) {
 }
 
 const SetAlarmEventEndTime = `-- name: SetAlarmEventEndTime :exec
-UPDATE history_event SET end_time = ?
-where id = ? and end_time is null
+UPDATE history_event
+SET end_time = ?
+where id = ?
+  and end_time is null
 `
 
 type SetAlarmEventEndTimeParams struct {
@@ -193,8 +199,10 @@ func (q *Queries) TruncateRules(ctx context.Context) error {
 }
 
 const UpdateAlarmAckMessage = `-- name: UpdateAlarmAckMessage :exec
-UPDATE history_event SET AckMessage = ?
-where id = ? and end_time is null
+UPDATE history_event
+SET AckMessage = ?
+where id = ?
+  and end_time is null
 `
 
 type UpdateAlarmAckMessageParams struct {
@@ -209,11 +217,12 @@ func (q *Queries) UpdateAlarmAckMessage(ctx context.Context, arg UpdateAlarmAckM
 
 const UpdateRule = `-- name: UpdateRule :exec
 UPDATE rules
-set AlarmCategoryOrder=?, 
-    AlarmLogic=?, 
+set AlarmCategoryOrder=?,
+    AlarmLogic=?,
     TriggerValue=?,
     AlarmCategory=?,
-    AlamrMessage=?,
+    AlarmMessage=?,
+    AckMethod=?,
     created_at=?
 WHERE id = ?
 `
@@ -223,7 +232,8 @@ type UpdateRuleParams struct {
 	Alarmlogic         string    `json:"alarmlogic"`
 	Triggervalue       string    `json:"triggervalue"`
 	Alarmcategory      string    `json:"alarmcategory"`
-	Alamrmessage       string    `json:"alamrmessage"`
+	Alarmmessage       string    `json:"alarmmessage"`
+	Ackmethod          string    `json:"ackmethod"`
 	CreatedAt          time.Time `json:"created_at"`
 	ID                 int32     `json:"id"`
 }
@@ -234,7 +244,8 @@ func (q *Queries) UpdateRule(ctx context.Context, arg UpdateRuleParams) error {
 		arg.Alarmlogic,
 		arg.Triggervalue,
 		arg.Alarmcategory,
-		arg.Alamrmessage,
+		arg.Alarmmessage,
+		arg.Ackmethod,
 		arg.CreatedAt,
 		arg.ID,
 	)
@@ -242,8 +253,11 @@ func (q *Queries) UpdateRule(ctx context.Context, arg UpdateRuleParams) error {
 }
 
 const UpgradeAlarmCategory = `-- name: UpgradeAlarmCategory :exec
-UPDATE history_event SET AlarmCategoryOrder = ?, HighestAlarmCategory = ?
-where id = ? and end_time is null
+UPDATE history_event
+SET AlarmCategoryOrder   = ?,
+    HighestAlarmCategory = ?
+where id = ?
+  and end_time is null
 `
 
 type UpgradeAlarmCategoryParams struct {

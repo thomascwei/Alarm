@@ -32,6 +32,7 @@ type Rule struct {
 	Alarmlogic         string    `json:"alarmlogic"`
 	Triggervalue       string    `json:"triggervalue"`
 	Alarmcategory      string    `json:"alarmcategory"`
-	Alamrmessage       string    `json:"alamrmessage"`
+	Alarmmessage       string    `json:"alarmmessage"`
+	Ackmethod          string    `json:"ackmethod"`
 	CreatedAt          time.Time `json:"created_at"`
 }

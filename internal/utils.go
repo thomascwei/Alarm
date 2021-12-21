@@ -38,7 +38,6 @@ var (
 
 	GC = gcache.New(200).Build()
 
-	// DBconfig     = viper.LoadConfig("./config")
 	DBconfig     = viper.LoadConfig(path.Join(rootPath, "config"))
 	DBConnection = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=true&loc=Local",
 		DBconfig.User, DBconfig.Password, DBconfig.Host, DBconfig.Port, DBconfig.DB)
@@ -79,7 +78,7 @@ func InitSQLAlarmRulesFromCSV(path string) (err error) {
 	logString := ""
 	// write sql
 	for _, row := range records {
-		Alarmcategoryorder, err := strconv.Atoi(row[4])
+		AlarmCategoryOrder, err := strconv.Atoi(row[4])
 		if err != nil {
 			Error.Println(err)
 			logString += err.Error() + ";"
@@ -87,11 +86,12 @@ func InitSQLAlarmRulesFromCSV(path string) (err error) {
 		}
 		_, err = queries.CreateRule(ctx, db.CreateRuleParams{
 			Object:             row[0],
-			Alarmcategoryorder: int32(Alarmcategoryorder),
+			Alarmcategoryorder: int32(AlarmCategoryOrder),
 			Alarmlogic:         row[1],
 			Triggervalue:       row[2],
 			Alarmcategory:      row[3],
-			Alamrmessage:       row[5],
+			Alarmmessage:       row[5],
+			Ackmethod:          row[6],
 		})
 		if err != nil {
 			Error.Println(err)
@@ -116,15 +116,16 @@ import (
 	`
 	for k, v := range rules {
 		SwitchString := "switch { "
-		for _, elememt := range v {
-			s := strings.Split(elememt, ":")
-			SwitchString = SwitchString + "\ncase value " + s[0] + ": " + `	return []string{"` + s[1] + `","` + s[2] + `","` + s[3] + `"}`
+		for _, element := range v {
+			s := strings.Split(element, ":")
+			SwitchString = SwitchString + "\ncase value " + s[0] + ": " + `	return []string{"` +
+				s[1] + `","` + s[2] + `","` + s[3] + `","` + s[4] + `"}`
 		}
-		SwitchString = SwitchString + "\n" + `default:return []string{"pass", "", ""}}`
+		SwitchString = SwitchString + "\n" + `default:return []string{"pass", "", "", ""}}`
 
 		FunctionBase := `
 func FunctionName(strx string) []string{
-	value, _ := strconv.Atoi(strx)
+	value, _ := strconv.ParseFloat(strx,32)
 		`
 		FunctionBase = strings.Replace(FunctionBase, "FunctionName", k, 2)
 		PackageBase = PackageBase + FunctionBase + SwitchString + "}"
@@ -156,7 +157,8 @@ func SaveAllFuctionAsCache() (err error) {
 			row.Alarmlogic = "=="
 		}
 		ID2Rules[row.Object] = append(ID2Rules[row.Object],
-			row.Alarmlogic+row.Triggervalue+":"+row.Alarmcategory+":"+row.Alamrmessage+":"+strconv.Itoa(int(row.Alarmcategoryorder)))
+			row.Alarmlogic+row.Triggervalue+":"+row.Alarmcategory+":"+row.Alarmmessage+
+				":"+strconv.Itoa(int(row.Alarmcategoryorder))+":"+row.Ackmethod)
 	}
 	// Trace.Println(ID2Rules)
 	funcString := generateAlarmFunctionString(ID2Rules)
@@ -188,35 +190,36 @@ func SaveAllFuctionAsCache() (err error) {
 }
 
 // 依點位名稱及數值判斷是否觸發alarm
-func AlarmTriggerCheck(objectID string, value string) (trigger bool, alarmCategory, alarmMessage string, alarmCategoryOrder int) {
+func AlarmTriggerCheck(objectID string, value string) (trigger bool, alarmCategory, alarmMessage string,
+	alarmCategoryOrder int, ackMethod string) {
 	// 從cache取得對應之function
 	funcMapCache, err := GC.Get("funcMap")
 
 	if err != nil {
 		Error.Println(err)
-		return false, "", "", -1
+		return false, "", "", -1, ""
 	}
 	funcMap, ok := funcMapCache.(map[string]func(string) []string)
 	if !ok {
 		Error.Printf("function assert error %T\n", funcMap)
-		return false, "", "", -1
+		return false, "", "", -1, ""
 	}
 
 	currentFunc, ok := funcMap[objectID]
 	if !ok {
-		return false, "", "", -1
+		return false, "", "", -1, ""
 	}
 	result := currentFunc(value)
 	// 未達觸發條件
 	if result[0] == "pass" {
-		return false, "pass", "", -1
+		return false, "pass", "", -1, ""
 	}
 	order, err := strconv.Atoi(result[2])
 	if err != nil {
 		Error.Println(err)
-		return false, "", "", -1
+		return false, "", "", -1, ""
 	}
-	return true, result[0], result[1], order
+	return true, result[0], result[1], order, result[3]
 }
 
 // 從cache讀此點位當前alarm狀態, 有值返回(true,string), 無值返回(false,"")
@@ -237,7 +240,7 @@ func ReadAlarmStatusFromCache(objectID string) (bool, AlarmCacher) {
 
 // 接AlarmTriggerCheck,依觸發結果進行後續邏輯運作
 func HandleAlarmTriggeResult(objectID string, value string) (err error) {
-	trigger, triggeredAlarmCategory, alarmMessage, alarmCategoryOrder := AlarmTriggerCheck(objectID, value)
+	trigger, triggeredAlarmCategory, alarmMessage, alarmCategoryOrder, ackMethod := AlarmTriggerCheck(objectID, value)
 	Trace.Println(trigger, triggeredAlarmCategory, alarmCategoryOrder)
 	exist, AlarmCache := ReadAlarmStatusFromCache(objectID)
 	currentTime := time.Now()
@@ -322,7 +325,7 @@ func HandleAlarmTriggeResult(objectID string, value string) (err error) {
 				Object:               objectID,
 				Alarmcategoryorder:   int32(alarmCategoryOrder),
 				Highestalarmcategory: triggeredAlarmCategory,
-				Ackmessage:           "",
+				Ackmessage:           ackMethod,
 				StartTime:            currentTime,
 			})
 			if err != nil {
@@ -356,7 +359,7 @@ func HandleAlarmTriggeResult(objectID string, value string) (err error) {
 				AlarmCategoryHigh:         triggeredAlarmCategory,
 				AlarmCategoryHighOrder:    alarmCategoryOrder,
 				AlarmMessage:              alarmMessage,
-				AckMessage:                "",
+				AckMessage:                ackMethod,
 				StartTime:                 currentTime})
 			if err != nil {
 				Error.Println(err)
@@ -365,6 +368,7 @@ func HandleAlarmTriggeResult(objectID string, value string) (err error) {
 		}
 	} else { //	此次HotData未達觸發標準
 		if exist { // 目前有alarm
+			Trace.Println("this")
 			if AlarmCache.AckMessage == "" { // 人員未ack
 				if alarmCategoryOrder != AlarmCache.AlarmCategoryOrderCurrent { // alarm category不同
 					//	更新cache與新增SQL event detail
@@ -393,6 +397,7 @@ func HandleAlarmTriggeResult(objectID string, value string) (err error) {
 			} else { //人員已ack
 				//	刪除cache, 新增SQL event detail, 更新SQL event的endtime
 				//	刪除cache
+				Trace.Println()
 				ok := GC.Remove(objectID)
 				if !ok {
 					return errors.New("remove cached alarm fail")

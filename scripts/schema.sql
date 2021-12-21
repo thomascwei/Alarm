@@ -5,8 +5,9 @@ CREATE TABLE `rules` (
   `AlarmLogic` varchar(10) NOT NULL,
   `TriggerValue` varchar(100) NOT NULL,
   `AlarmCategory` varchar(100) NOT NULL,
-  `AlamrMessage` varchar(255) NOT NULL,
-  `created_at` datetime NOT NULL DEFAULT (now())
+  `AlarmMessage` varchar(255) NOT NULL,
+  `AckMethod` varchar(100) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT now()
 );
 
 CREATE TABLE `history_event` (
@@ -15,7 +16,7 @@ CREATE TABLE `history_event` (
   `AlarmCategoryOrder` int NOT NULL,
   `HighestAlarmCategory` varchar(100) NOT NULL,
   `AckMessage` varchar(255) NOT NULL,
-  `start_time` datetime NOT NULL DEFAULT (now()),
+  `start_time` datetime NOT NULL DEFAULT now(),
   `end_time` datetime
 );
 
@@ -24,7 +25,7 @@ CREATE TABLE `history_event_detail` (
   `Event_id` int NOT NULL,
   `Object` varchar(100) NOT NULL,
   `AlarmCategory` varchar(100) NOT NULL,
-  `created_at` datetime NOT NULL DEFAULT (now())
+  `created_at` datetime NOT NULL DEFAULT now()
 );
 
 ALTER TABLE `history_event_detail` ADD FOREIGN KEY (`Event_id`) REFERENCES `history_event` (`id`);

@@ -1,0 +1,15 @@
+ObjectID,AlarmLogic,TriggerValue,AlarmCategory,AlarmCategoryOrder,AlarmMessage,AckMethod
+ID0011,=,1,High,1,ID001告警1,
+ID0011,=,2,Medium,2,ID001告警2,
+ID0011,=,3,Low,3,ID001告警3,
+ID0012,>,10,Low,3,ID002告警3,
+ID0012,>,30,Medium,2,ID002告警2,
+ID0012,>,50,High,1,ID002告警1,
+ID0013,>,1,Low,3,ID003告警3,
+ID0013,>,41,Medium,2,ID003告警2,
+ID0013,>,71,High,1,ID003告警1,
+ID0014,=,11,Low,3,ID004告警31,
+ID0014,=,21,Low,2,ID004告警32,
+ID0015,>,1,Low,3,ID003告警3,自動核銷
+ID0015,>,41,Medium,2,ID003告警2,自動核銷
+ID0015,>,71,High,1,ID003告警1,自動核銷

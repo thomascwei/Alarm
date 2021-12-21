@@ -3,6 +3,7 @@ package internal
 import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
+	"path"
 	"testing"
 	"time"
 )
@@ -20,8 +21,9 @@ func clearAlarmDBHistory(t *testing.T) {
 }
 
 func TestInitSQLAlarmRules(t *testing.T) {
-	err := InitSQLAlarmRulesFromCSV("./test_alarm.csv")
-	//require.NoError(t, err)
+	err := InitSQLAlarmRulesFromCSV(path.Join(rootPath, "test_data", "test_alarm.csv"))
+	// 這裡不檢查錯誤
+	// require.NoError(t, err)
 
 	var got string
 	row := MyDB.QueryRow("SELECT AlarmCategory FROM rules where object=? and AlarmCategoryOrder=?", "ID0012", 2)
@@ -32,7 +34,7 @@ func TestInitSQLAlarmRules(t *testing.T) {
 	require.Equal(t, got, want)
 }
 
-func TestSaveAllFuctionAsCache(t *testing.T) {
+func TestSaveAllFunctionAsCache(t *testing.T) {
 	err := SaveAllFuctionAsCache()
 	require.NoError(t, err)
 	var want int
@@ -63,7 +65,7 @@ func TestAlarmTriggerCheck(t *testing.T) {
 	err = MyDB.QueryRow("SELECT Object, TriggerValue, AlarmCategory FROM rules WHERE id=?", MaxID).Scan(&Object, &TriggerValue, &AlarmCategory)
 	require.NoError(t, err)
 
-	_, alarmCategory, _, _ := AlarmTriggerCheck(Object, TriggerValue)
+	_, alarmCategory, _, _, _ := AlarmTriggerCheck(Object, TriggerValue)
 	got := alarmCategory
 	want := AlarmCategory
 	// Trace.Println(got, want)
@@ -73,7 +75,7 @@ func TestAlarmTriggerCheck(t *testing.T) {
 
 func TestReadAlarmStatusFromCache(t *testing.T) {
 	object := "ID0011"
-	_, alarmCategory, _, _ := AlarmTriggerCheck(object, "1")
+	_, alarmCategory, _, _, _ := AlarmTriggerCheck(object, "1")
 	Trace.Println(alarmCategory)
 	err := GC.Set(object, AlarmCacher{
 		Object:                    object,
@@ -88,18 +90,18 @@ func TestReadAlarmStatusFromCache(t *testing.T) {
 
 	want := "High"
 
-	t.Run("exact objectid", func(t *testing.T) {
+	t.Run("exact Object ID", func(t *testing.T) {
 		_, AlarmCache := ReadAlarmStatusFromCache(object)
 		require.Equal(t, want, AlarmCache.AlarmCategoryHigh)
 	})
-	t.Run("wrong objectid", func(t *testing.T) {
-		_, AlarmCache := ReadAlarmStatusFromCache("wrongid")
+	t.Run("wrong Object id", func(t *testing.T) {
+		_, AlarmCache := ReadAlarmStatusFromCache("WrongID")
 		require.Equal(t, "", AlarmCache.AlarmCategoryHigh)
 	})
 
 }
 
-func TestHandleAlarmTriggeResult(t *testing.T) {
+func TestHandleAlarmTriggerResult(t *testing.T) {
 	t.Run("trigger High from pass", func(t *testing.T) {
 		// 先清空DB
 		clearAlarmDBHistory(t)
@@ -386,5 +388,65 @@ func TestHandleAlarmTriggeResult(t *testing.T) {
 		AlarmCache, err = GC.Get(object)
 		require.Error(t, err)
 	})
+	t.Run("低到高到pass後自動核銷", func(t *testing.T) {
+		//	先觸發Low ,ack, pass
+		// 先清空DB
+		clearAlarmDBHistory(t)
+		object := "ID0015"
+		GC.Remove(object)
+		// 第一階段觸發Low
+		want := "Low"
+		err := HandleAlarmTriggeResult(object, "11")
+		require.NoError(t, err)
+		//	檢測DB歷史最高是否正確
+		var got string
+		row := MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event limit 1")
+		err = row.Scan(&got)
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+		AlarmCache, err := GC.Get(object)
+		require.NoError(t, err)
+		AlarmCacheAsserted, ok := AlarmCache.(AlarmCacher)
+		require.True(t, ok)
+		got = AlarmCacheAsserted.AlarmCategoryHigh
+		require.Equal(t, want, got)
+		//	檢測當前cache alarmCategory是否正確
+		got = AlarmCacheAsserted.AlarmCategoryCurrent
+		require.Equal(t, want, got)
 
+		//	第二階段觸發High
+		want = "High"
+		err = HandleAlarmTriggeResult(object, "80.05")
+		require.NoError(t, err)
+		row = MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event limit 1")
+		err = row.Scan(&got)
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+		AlarmCache, err = GC.Get(object)
+		require.NoError(t, err)
+		AlarmCacheAsserted, ok = AlarmCache.(AlarmCacher)
+		require.True(t, ok)
+		got = AlarmCacheAsserted.AlarmCategoryHigh
+		require.Equal(t, want, got)
+		//	檢測當前cache alarmCategory是否正確
+		got = AlarmCacheAsserted.AlarmCategoryCurrent
+		require.Equal(t, want, got)
+
+		//	第三階段降到pass後直接結束
+		err = HandleAlarmTriggeResult(object, "0.1")
+		require.NoError(t, err)
+		//	檢測DB歷史最高是否正確
+		row = MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event limit 1")
+		err = row.Scan(&got)
+		require.NoError(t, err)
+		require.Equal(t, "High", got)
+		// 檢測EndTime
+		var count int
+		row = MyDB.QueryRow("SELECT count(*) FROM history_event where end_time is null")
+		err = row.Scan(&count)
+		require.Zero(t, count)
+		// 檢測cache是否已消失
+		AlarmCache, err = GC.Get(object)
+		require.Error(t, err)
+	})
 }
