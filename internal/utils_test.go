@@ -451,7 +451,6 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 	})
 }
 
-// TODO
 func TestListAllActiveAlarmsFromCache(t *testing.T) {
 	// 先清空DB
 	clearAlarmDBHistory(t)

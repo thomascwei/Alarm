@@ -530,7 +530,7 @@ func ReceiveAckMessage(objectID string, message string) (err error) {
 	return
 }
 
-// TODO 列出cache中的未結alarm清單
+// 列出cache中的未結alarm清單
 func ListAllActiveAlarmsFromCache() (result []AlarmCacher, err error) {
 	raw := GC.GetALL(false)
 	delete(raw, FunctionCacheKey)
