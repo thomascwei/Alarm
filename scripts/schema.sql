@@ -1,3 +1,4 @@
+USE alarm;
 CREATE TABLE `rules` (
   `id` int PRIMARY KEY AUTO_INCREMENT,
   `Object` varchar(100) NOT NULL,

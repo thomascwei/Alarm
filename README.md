@@ -42,6 +42,12 @@ sqlc generate
 protoc -I=. --go_out=plugins=grpc:pkg proto/*.proto
 ```
 
+docker
+```shell
+docker build -t thomaswei/alarm . --no-cache
+# 加入環境變量從container訪問host db
+docker run -d --name alarm -p 55555:55555 -e DB_HOST=host.docker.internal thomaswei/alarm 
+```
 
 ![](png/ms.png)
 ![](png/DB.png)
