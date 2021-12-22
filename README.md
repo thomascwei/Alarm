@@ -49,6 +49,12 @@ docker build -t thomaswei/alarm . --no-cache
 docker run -d --name alarm -p 55555:55555 -e DB_HOST=host.docker.internal thomaswei/alarm 
 ```
 
+docker compose
+```shell
+# 如果要從docker hub直接下載image就要單獨複製scripts/schema.sql
+docker-compose up -d 
+```
+
 ![](png/ms.png)
 ![](png/DB.png)
 Alarm觸發邏輯

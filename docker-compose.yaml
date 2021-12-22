@@ -12,16 +12,18 @@ services:
       MYSQL_PASSWORD: 123456
     volumes:
       - ./scripts/schema.sql:/docker-entrypoint-initdb.d/1.sql
+      - ./sql_mount:/var/lib/mysql
+
     healthcheck:
       test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
       timeout: 20s
       retries: 10
 
   alarm:
-    image: thomaswei/alarm
-#    build:
-#      context: .
-#      dockerfile: Dockerfile
+#    image: thomaswei/alarm
+    build:
+      context: .
+      dockerfile: Dockerfile
     environment:
       DB_HOST: mysql
       DB_USER: thomas
