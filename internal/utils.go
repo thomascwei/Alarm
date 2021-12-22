@@ -147,13 +147,22 @@ import (
 	)
 	`
 	for k, v := range rules {
+		defaultConfig := false
 		SwitchString := "switch { "
 		for _, element := range v {
 			s := strings.Split(element, ":")
+			if s[0] == "==others" {
+				defaultConfig = true
+				continue
+			}
 			SwitchString = SwitchString + "\ncase value " + s[0] + ": " + `	return []string{"` +
 				s[1] + `","` + s[2] + `","` + s[3] + `","` + s[4] + `"}`
 		}
-		SwitchString = SwitchString + "\n" + `default:return []string{"pass", "", "", ""}}`
+		if defaultConfig {
+			SwitchString = SwitchString + "\n" + `default:return []string{"pass", "", "", ""}}`
+		} else {
+			SwitchString = SwitchString + `}; return []string{"undefined", "", "", ""}`
+		}
 
 		FunctionBase := `
 func FunctionName(strx string) []string{
@@ -247,6 +256,10 @@ func AlarmTriggerCheck(objectID string, value string) (trigger bool, alarmCatego
 	if result[0] == "pass" {
 		return false, "pass", "", -1, ""
 	}
+	// 代表sensor送上未定義值
+	if result[0] == "undefined" {
+		return false, "undefined", "", -3, ""
+	}
 	order, err := strconv.Atoi(result[2])
 	if err != nil {
 		Error.Println(err)
@@ -274,16 +287,20 @@ func ReadAlarmStatusFromCache(objectID string) (bool, AlarmCacher) {
 // 接AlarmTriggerCheck,依觸發結果進行後續邏輯運作
 func HandleAlarmTriggerResult(objectID string, value string) (err error) {
 	trigger, triggeredAlarmCategory, alarmMessage, alarmCategoryOrder, ackMethod := AlarmTriggerCheck(objectID, value)
-	//Trace.Println(trigger, triggeredAlarmCategory, alarmCategoryOrder)
+	Trace.Println(trigger, triggeredAlarmCategory, alarmCategoryOrder)
 	// 若Object id 有誤alarmCategoryOrder為-2
 	if alarmCategoryOrder == -2 {
 		return errors.New("ObjectID Not Found")
+	}
+	// 若數值未定義alarmCategoryOrder為-2
+	if alarmCategoryOrder == -3 {
+		return errors.New("value Not defined")
 	}
 	exist, AlarmCache := ReadAlarmStatusFromCache(objectID)
 	currentTime := time.Now()
 
 	if trigger { // 此次HotData到達觸發標準
-		Trace.Println()
+		//Trace.Println()
 		if exist { //	目前有alarm
 			Trace.Println()
 			if alarmCategoryOrder == AlarmCache.AlarmCategoryOrderCurrent { // alarm等級不變

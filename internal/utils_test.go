@@ -26,7 +26,7 @@ func TestInitSQLAlarmRules(t *testing.T) {
 	// require.NoError(t, err)
 
 	var got string
-	row := MyDB.QueryRow("SELECT AlarmCategory FROM rules where object=? and AlarmCategoryOrder=?", "ID0012", 2)
+	row := MyDB.QueryRow("SELECT AlarmCategory FROM rules where object=? and AlarmCategoryOrder=?", "ID0013", 2)
 	err = row.Scan(&got)
 	Trace.Println(got)
 	require.NoError(t, err)
@@ -161,10 +161,10 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 		GC.Remove(object)
 
 		// 觸發Low
-		err := HandleAlarmTriggerResult(object, "21")
+		err := HandleAlarmTriggerResult(object, "11")
 		require.NoError(t, err)
 		// 回歸正常
-		err = HandleAlarmTriggerResult(object, "1")
+		err = HandleAlarmTriggerResult(object, "21")
 		require.NoError(t, err)
 
 		want := "pass"
@@ -449,12 +449,59 @@ func TestHandleAlarmTriggerResult(t *testing.T) {
 		AlarmCache, err = GC.Get(object)
 		require.Error(t, err)
 	})
+	t.Run("測試收到undefined是否就忽略", func(t *testing.T) {
+		// TODO 測試收到undefined是否就忽略, 未處理undefined
+		// 先清空DB
+		clearAlarmDBHistory(t)
+		object := "ID0014"
+		GC.Remove(object)
+		// 觸發Low
+		err := HandleAlarmTriggerResult(object, "11")
+		require.NoError(t, err)
+		//	檢測DB歷史最高是否正確
+		want := "Low"
+		var got string
+		row := MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event limit 1")
+		err = row.Scan(&got)
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+		AlarmCache, err := GC.Get(object)
+		require.NoError(t, err)
+		AlarmCacheAsserted, ok := AlarmCache.(AlarmCacher)
+		require.True(t, ok)
+		got = AlarmCacheAsserted.AlarmCategoryHigh
+		require.Equal(t, want, got)
+		//	檢測當前cache alarmCategory是否正確
+		got = AlarmCacheAsserted.AlarmCategoryCurrent
+		require.Equal(t, want, got)
+
+		// 觸發undefined,狀態皆不會改變
+		err = HandleAlarmTriggerResult(object, "4")
+		require.Error(t, err)
+		//	檢測DB歷史最高是否正確
+		row = MyDB.QueryRow("SELECT HighestAlarmCategory FROM history_event limit 1")
+		err = row.Scan(&got)
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+		AlarmCache, err = GC.Get(object)
+		require.NoError(t, err)
+		AlarmCacheAsserted, ok = AlarmCache.(AlarmCacher)
+		require.True(t, ok)
+		got = AlarmCacheAsserted.AlarmCategoryHigh
+		require.Equal(t, want, got)
+		//	檢測當前cache alarmCategory是否正確
+		got = AlarmCacheAsserted.AlarmCategoryCurrent
+		require.Equal(t, want, got)
+	})
 }
 
 func TestListAllActiveAlarmsFromCache(t *testing.T) {
 	// 先清空DB
 	clearAlarmDBHistory(t)
+	GC.Remove("ID0011")
 	GC.Remove("ID0012")
+	GC.Remove("ID0013")
+	GC.Remove("ID0014")
 	GC.Remove("ID0015")
 
 	err := HandleAlarmTriggerResult("ID0012", "80.05")
